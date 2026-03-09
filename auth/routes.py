@@ -2,8 +2,8 @@ import functools
 import bcrypt
 import sqlite3
 import secrets
-import smtplib
-import threading
+import urllib.request
+import json
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
@@ -70,22 +70,48 @@ def send_otp_email(to_email, otp):
     """
     msg.attach(MIMEText(html_body, 'html'))
 
-    def _send_async():
-        try:
-            if port == 465:
-                with smtplib.SMTP_SSL(server, port, timeout=10) as smtp:
-                    smtp.login(username, password)
+    # New HTTP API approach to bypass Render SMTP firewall
+    brevo_api_key = cfg.get('MAIL_PASSWORD') # Re-using this env var for the API key for convenience
+    
+    if not brevo_api_key or not brevo_api_key.startswith('xkeys'):
+        # Fallback to local dev testing if no Brevo key is provided
+        import threading
+        import smtplib
+        def _send_async():
+            try:
+                with smtplib.SMTP('smtp.gmail.com', 587, timeout=10) as smtp:
+                    smtp.starttls()
+                    smtp.login(username, cfg.get('MAIL_PASSWORD'))
                     smtp.sendmail(username, to_email, msg.as_string())
-            else:
-                with smtplib.SMTP(server, port, timeout=10) as smtp:
-                    if use_tls:
-                        smtp.starttls()
-                    smtp.login(username, password)
-                    smtp.sendmail(username, to_email, msg.as_string())
-        except Exception as e:
-            pass # Logger might not be available in async thread context safely
+            except:
+                pass
+        threading.Thread(target=_send_async).start()
+        return True
 
-    # Run in background to prevent Gunicorn worker timeout on Render
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": brevo_api_key,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"name": "AI Hiring Platform", "email": username},
+        "to": [{"email": to_email}],
+        "subject": "AI Hiring Platform — Email Verification",
+        "htmlContent": html_body
+    }
+
+    import threading
+    def _send_async():
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        try:
+            with urllib.request.urlopen(req, timeout=10) as response:
+                pass
+        except Exception as e:
+            current_app.logger.error(f"Brevo API error: {e}")
+
+    # Run in background to prevent Gunicorn worker timeout
     threading.Thread(target=_send_async).start()
     return True
 
@@ -332,45 +358,35 @@ def login():
 @auth_bp.route('/test_email')
 def test_email():
     cfg = current_app.config
-    server = cfg.get('MAIL_SERVER', 'smtp.gmail.com')
-    port = cfg.get('MAIL_PORT', 587)
-    username = cfg.get('MAIL_USERNAME')
-    password = cfg.get('MAIL_PASSWORD')
-    to_email = request.args.get('email', username) # Send to self by default
+    username = cfg.get('MAIL_USERNAME', 'q2494301@gmail.com')
+    brevo_api_key = cfg.get('MAIL_PASSWORD')
+    to_email = request.args.get('email', username)
 
     import traceback
-    result = "Starting test...<br>"
+    result = "Starting HTTP API test...<br>"
+    
+    if not brevo_api_key or not brevo_api_key.startswith('xkeys'):
+        return result + "<b>Error:</b> MAIL_PASSWORD is not set to a valid Brevo API key (starting with 'xkeys')."
+
+    url = "https://api.brevo.com/v3/smtp/email"
+    headers = {
+        "accept": "application/json",
+        "api-key": brevo_api_key,
+        "content-type": "application/json"
+    }
+    payload = {
+        "sender": {"name": "AI Platform Test", "email": username},
+        "to": [{"email": to_email}],
+        "subject": "Render HTTP Email Test",
+        "htmlContent": "<p>This is a successful HTTP test from Render!</p>"
+    }
+
     try:
-        if port == 465:
-            with smtplib.SMTP_SSL(server, port, timeout=10) as smtp:
-                smtp.set_debuglevel(1)
-                result += f"SMTP_SSL Connection established on port {port}.<br>"
-                smtp.login(username, password)
-                result += "Logged in correctly.<br>"
-                
-                msg = MIMEText('This is a network test email on SSL.', 'html')
-                msg['Subject'] = 'Test from Render (SSL)'
-                msg['From'] = username
-                msg['To'] = to_email
-                
-                smtp.sendmail(username, to_email, msg.as_string())
-                result += f"Email sent successfully to {to_email}!"
-        else:
-            with smtplib.SMTP(server, port, timeout=10) as smtp:
-                smtp.set_debuglevel(1)
-                result += f"SMTP Connection established on port {port}.<br>"
-                smtp.starttls()
-                result += "TLS started.<br>"
-                smtp.login(username, password)
-                result += "Logged in correctly.<br>"
-                
-                msg = MIMEText('This is a network test email via TLS.', 'html')
-                msg['Subject'] = 'Test from Render (TLS)'
-                msg['From'] = username
-                msg['To'] = to_email
-                
-                smtp.sendmail(username, to_email, msg.as_string())
-                result += f"Email sent successfully to {to_email}!"
+        data = json.dumps(payload).encode('utf-8')
+        req = urllib.request.Request(url, data=data, headers=headers, method='POST')
+        with urllib.request.urlopen(req, timeout=10) as response:
+            res_body = response.read().decode('utf-8')
+            result += f"<b>Success!</b> HTTP Code: {response.getcode()}<br>Response: {res_body}"
     except Exception as e:
         result += "<b>ERROR OCCURRED:</b><br><pre>" + traceback.format_exc() + "</pre>"
     
