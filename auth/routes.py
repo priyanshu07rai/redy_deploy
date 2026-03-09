@@ -322,6 +322,41 @@ def login():
     return render_template('login.html')
 
 
+# ─── Test Endpoint ───────────────────────────────────────────────────────────
+
+@auth_bp.route('/test_email')
+def test_email():
+    cfg = current_app.config
+    server = cfg.get('MAIL_SERVER', 'smtp.gmail.com')
+    port = cfg.get('MAIL_PORT', 587)
+    username = cfg.get('MAIL_USERNAME')
+    password = cfg.get('MAIL_PASSWORD')
+    to_email = request.args.get('email', username) # Send to self by default
+
+    import traceback
+    result = "Starting test...<br>"
+    try:
+        with smtplib.SMTP(server, port, timeout=10) as smtp:
+            smtp.set_debuglevel(1)
+            result += "SMTP Connection established.<br>"
+            smtp.starttls()
+            result += "TLS started.<br>"
+            smtp.login(username, password)
+            result += "Logged in correctly.<br>"
+            
+            msg = MIMEText('This is a network test email.', 'html')
+            msg['Subject'] = 'Test from Render'
+            msg['From'] = username
+            msg['To'] = to_email
+            
+            smtp.sendmail(username, to_email, msg.as_string())
+            result += f"Email sent successfully to {to_email}!"
+    except Exception as e:
+        result += "<b>ERROR OCCURRED:</b><br><pre>" + traceback.format_exc() + "</pre>"
+    
+    return result
+
+
 # ─── Logout ──────────────────────────────────────────────────────────────────
 
 @auth_bp.route('/logout')
