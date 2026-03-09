@@ -1,0 +1,479 @@
+{% extends 'base.html' %}
+
+{% block title %}Candidate Intelligence Dashboard{% endblock %}
+
+{% block extra_head %}
+<style>
+    /* Full-width dark intelligence theme layout for Recruiter Dashboard */
+    body {
+        background-color: #0f172a;
+        /* darker slate */
+        color: #e2e8f0;
+    }
+
+    .dashboard-full {
+        width: 100%;
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 2rem;
+    }
+
+    .top-bar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding-bottom: 2rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        margin-bottom: 2rem;
+    }
+
+    .company-branding {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+
+    .company-branding h2 {
+        margin: 0;
+        font-size: 1.5rem;
+        color: #f8fafc;
+        letter-spacing: -0.5px;
+    }
+
+    .user-controls {
+        display: flex;
+        align-items: center;
+        gap: 1.5rem;
+    }
+
+    .header-section {
+        margin-bottom: 2rem;
+    }
+
+    .header-section h1 {
+        font-size: 2.5rem;
+        margin-bottom: 0.5rem;
+        background: linear-gradient(135deg, #e0e7ff 0%, #a5b4fc 100%);
+        -webkit-background-clip: text;
+        -webkit-text-fill-color: transparent;
+    }
+
+    .stats-row {
+        display: flex;
+        gap: 2rem;
+        color: #94a3b8;
+        font-size: 0.95rem;
+    }
+
+    .stat-item {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
+    }
+
+    .stat-val {
+        color: #f8fafc;
+        font-weight: 600;
+        font-size: 1.1rem;
+    }
+
+    .filter-bar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 1rem;
+        padding: 1rem;
+        background: rgba(30, 41, 59, 0.5);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 12px;
+        margin-bottom: 2rem;
+        align-items: center;
+    }
+
+    .filter-input,
+    .filter-select {
+        background: rgba(15, 23, 42, 0.6);
+        border: 1px solid rgba(255, 255, 255, 0.1);
+        color: #e2e8f0;
+        padding: 0.5rem 1rem;
+        border-radius: 6px;
+        font-size: 0.9rem;
+    }
+
+    .filter-input:focus,
+    .filter-select:focus {
+        border-color: #6366f1;
+        outline: none;
+    }
+
+    .candidates-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+        gap: 1.5rem;
+    }
+
+    .candidate-card {
+        background: rgba(30, 41, 59, 0.8);
+        border: 1px solid rgba(255, 255, 255, 0.05);
+        border-radius: 16px;
+        padding: 1.5rem;
+        display: flex;
+        flex-direction: column;
+        gap: 1.25rem;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .candidate-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        border-color: rgba(99, 102, 241, 0.3);
+    }
+
+    .card-top {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+    }
+
+    .card-title h3 {
+        margin: 0 0 0.25rem 0;
+        font-size: 1.25rem;
+        color: #f8fafc;
+    }
+
+    .card-id {
+        font-size: 0.8rem;
+        color: #64748b;
+        font-family: monospace;
+    }
+
+    .badge {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.6rem;
+        border-radius: 999px;
+        font-weight: 600;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+    }
+
+    .badge-verified {
+        background: rgba(16, 185, 129, 0.15);
+        color: #10b981;
+        border: 1px solid rgba(16, 185, 129, 0.3);
+    }
+
+    .badge-pending {
+        background: rgba(245, 158, 11, 0.15);
+        color: #f59e0b;
+        border: 1px solid rgba(245, 158, 11, 0.3);
+    }
+
+    .card-middle {
+        background: rgba(15, 23, 42, 0.5);
+        border-radius: 8px;
+        padding: 1rem;
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 1rem;
+    }
+
+    .status-item {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+
+    .status-label {
+        font-size: 0.75rem;
+        color: #64748b;
+        text-transform: uppercase;
+    }
+
+    .status-val {
+        font-size: 0.9rem;
+        font-weight: 500;
+        display: flex;
+        align-items: center;
+        gap: 0.4rem;
+    }
+
+    .flag-green {
+        color: #10b981;
+    }
+
+    .flag-yellow {
+        color: #f59e0b;
+    }
+
+    .flag-red {
+        color: #ef4444;
+    }
+
+    .card-bottom {
+        display: flex;
+        gap: 0.75rem;
+        margin-top: auto;
+    }
+
+    .btn-profile {
+        flex: 1;
+        background: rgba(99, 102, 241, 0.1);
+        color: #818cf8;
+        border: 1px solid rgba(99, 102, 241, 0.2);
+        padding: 0.6rem;
+        border-radius: 8px;
+        text-align: center;
+        text-decoration: none;
+        font-weight: 500;
+        font-size: 0.9rem;
+        transition: all 0.2s;
+    }
+
+    .btn-profile:hover {
+        background: rgba(99, 102, 241, 0.2);
+        color: #c7d2fe;
+    }
+
+    .score-circle {
+        width: 48px;
+        height: 48px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 1.1rem;
+        border: 2px solid;
+    }
+
+    .score-high {
+        border-color: rgba(16, 185, 129, 0.5);
+        color: #10b981;
+        background: rgba(16, 185, 129, 0.1);
+    }
+
+    .score-med {
+        border-color: rgba(245, 158, 11, 0.5);
+        color: #f59e0b;
+        background: rgba(245, 158, 11, 0.1);
+    }
+
+    .score-low {
+        border-color: rgba(239, 68, 68, 0.5);
+        color: #ef4444;
+        background: rgba(239, 68, 68, 0.1);
+    }
+
+    /* Compare Mode */
+    .compare-checkbox-wrap {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+    }
+
+    .compare-checkbox-wrap input[type=checkbox] {
+        width: 18px;
+        height: 18px;
+        accent-color: #4da6ff;
+        cursor: pointer;
+    }
+
+    .candidate-card {
+        position: relative;
+    }
+
+    .candidate-card.selected-compare {
+        border-color: rgba(77, 166, 255, 0.6) !important;
+        box-shadow: 0 0 20px rgba(77, 166, 255, 0.2);
+    }
+
+    .compare-float {
+        position: fixed;
+        bottom: 32px;
+        right: 32px;
+        z-index: 9999;
+        display: none;
+        background: linear-gradient(135deg, #4da6ff, #a78bfa);
+        color: #fff;
+        border: none;
+        border-radius: 50px;
+        padding: 16px 32px;
+        font-size: 1rem;
+        font-weight: 700;
+        cursor: pointer;
+        box-shadow: 0 8px 32px rgba(77, 166, 255, 0.4);
+        animation: float-pulse 2s infinite;
+        text-decoration: none;
+    }
+
+    @keyframes float-pulse {
+
+        0%,
+        100% {
+            box-shadow: 0 8px 32px rgba(77, 166, 255, 0.4);
+        }
+
+        50% {
+            box-shadow: 0 8px 48px rgba(77, 166, 255, 0.7);
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-full">
+
+    <div class="top-bar">
+        <div class="company-branding">
+            <div class="icon" style="font-size: 1.8rem;">🏢</div>
+            <h2>{{ company.company_name if company else 'Platform Administration' }}</h2>
+        </div>
+        <div class="user-controls">
+            <span style="color: #94a3b8; font-size: 0.9rem;">{{ session.get('email', 'Recruiter') }}</span>
+            <a href="{{ url_for('auth.logout') }}"
+                style="color: #ef4444; text-decoration: none; font-size: 0.9rem; border: 1px solid rgba(239,68,68,0.3); padding: 0.4rem 1rem; border-radius: 6px;">Logout</a>
+        </div>
+    </div>
+
+    <div class="header-section">
+        <h1>Candidate Intelligence Dashboard</h1>
+        <div class="stats-row">
+            <div class="stat-item">
+                <span>Total Applicants:</span>
+                <span class="stat-val">{{ stats.total }}</span>
+            </div>
+            <div class="stat-item">
+                <span>Verified:</span>
+                <span class="stat-val" style="color: #10b981;">{{ stats.verified }}</span>
+            </div>
+            <div class="stat-item">
+                <span>Pending Review:</span>
+                <span class="stat-val" style="color: #f59e0b;">{{ stats.pending }}</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="filter-bar">
+        <input type="text" class="filter-input" placeholder="Search by name..." style="min-width: 200px;">
+
+        <select class="filter-select">
+            <option value="">Filter by Score Range</option>
+            <option value="90+">90 - 100 (Elite)</option>
+            <option value="70-90">70 - 89 (Strong)</option>
+            <option value="<70">Below 70</option>
+        </select>
+
+        <select class="filter-select">
+            <option value="">Sort By...</option>
+            <option value="score_desc">Highest Score</option>
+            <option value="integrity_desc">Integrity Score</option>
+            <option value="latest">Latest Interview</option>
+        </select>
+
+        <label
+            style="display: flex; align-items: center; gap: 0.5rem; color: #94a3b8; font-size: 0.9rem; margin-left: auto;">
+            <input type="checkbox" style="accent-color: #6366f1;">
+            Verified Only
+        </label>
+        <label style="display: flex; align-items: center; gap: 0.5rem; color: #94a3b8; font-size: 0.9rem;">
+            <input type="checkbox" style="accent-color: #ef4444;">
+            Flagged Only
+        </label>
+    </div>
+
+    <!-- Floating Compare Button -->
+    <a id="compare-btn" href="#" class="compare-float">⚖️ Compare Selected (2)</a>
+
+    <div class="candidates-grid">
+        {% for c in candidates %}
+        <div class="candidate-card" data-cid="{{ c.id }}">
+            <div class="compare-checkbox-wrap">
+                <input type="checkbox" class="compare-check" data-cid="{{ c.id }}" title="Select for comparison">
+            </div>
+            <div class="card-top" style="padding-left: 28px;">
+                <div class="card-title">
+                    <h3>{{ c.full_name or 'Unclaimed Profile' }}</h3>
+                    <div class="card-id">APP-{{ c.id | string | pad_zero(4) }} • Rank #{{ c.rank }}</div>
+                </div>
+                {% if c.is_verified %}
+                <span class="badge badge-verified">✓ Verified</span>
+                {% else %}
+                <span class="badge badge-pending">Pending</span>
+                {% endif %}
+            </div>
+
+            <div class="card-middle">
+                <div class="status-item">
+                    <span class="status-label">Resume Status</span>
+                    <span
+                        class="status-val {% if c.resume_status == 'confirmed' %}flag-green{% else %}flag-yellow{% endif %}">
+                        {% if c.resume_status == 'confirmed' %}✔ Uploaded{% else %}⚠ Pending{% endif %}
+                    </span>
+                </div>
+                <div class="status-item">
+                    <span class="status-label">Interview Status</span>
+                    <span class="status-val {% if c.interview_id %}flag-green{% else %}flag-yellow{% endif %}">
+                        {% if c.interview_id %}✔ Completed{% else %}⚠ Pending{% endif %}
+                    </span>
+                </div>
+                <div class="status-item" style="grid-column: span 2;">
+                    <span class="status-label">Integrity Flag</span>
+                    {% set integ = c.integrity_index or 0 %}
+                    <span
+                        class="status-val {% if integ > 90 %}flag-green{% elif integ > 70 %}flag-yellow{% else %}flag-red{% endif %}">
+                        {% if integ > 90 %}🛡 Secure ({{ integ }}%){% elif integ > 70 %}⚠ Minor Flags ({{ integ }}%){%
+                        else %}🚨 High Risk ({{ integ }}%){% endif %}
+                    </span>
+                </div>
+            </div>
+
+            <div class="card-bottom">
+                <a href="{{ url_for('candidate_profile', candidate_id=c.id) }}" class="btn-profile">🔍 View Full
+                    Profile</a>
+            </div>
+        </div>
+        {% else %}
+        <div
+            style="grid-column: 1 / -1; text-align: center; padding: 4rem; background: rgba(30,41,59,0.3); border-radius: 16px; border: 1px dashed rgba(255,255,255,0.1);">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📭</div>
+            <h3 style="color: #f8fafc; margin-bottom: 0.5rem;">No candidates yet</h3>
+            <p style="color: #94a3b8;">No candidates have applied under <strong>{{ company.company_name if company else
+                    'your company' }}</strong> yet.<br>
+                Share your company code to receive applications: <strong style="color: #818cf8; font-size: 1.2rem;">{{
+                    company.company_code if company else '---' }}</strong></p>
+        </div>
+        {% endfor %}
+    </div>
+
+</div>
+
+<script>
+    const checks = document.querySelectorAll('.compare-check');
+    const compareBtn = document.getElementById('compare-btn');
+    let selected = [];
+
+    checks.forEach(cb => {
+        cb.addEventListener('change', () => {
+            const cid = cb.dataset.cid;
+            const card = cb.closest('.candidate-card');
+            if (cb.checked) {
+                if (selected.length >= 2) {
+                    cb.checked = false;
+                    alert('You can only compare 2 candidates at a time. Deselect one first.');
+                    return;
+                }
+                selected.push(cid);
+                card.classList.add('selected-compare');
+            } else {
+                selected = selected.filter(id => id !== cid);
+                card.classList.remove('selected-compare');
+            }
+            if (selected.length === 2) {
+                compareBtn.href = `/recruiter/compare/${selected[0]}/${selected[1]}`;
+                compareBtn.style.display = 'block';
+            } else {
+                compareBtn.style.display = 'none';
+            }
+        });
+    });
+</script>
+{% endblock %}

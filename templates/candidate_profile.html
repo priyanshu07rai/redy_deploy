@@ -1,0 +1,1018 @@
+{% extends 'base.html' %}
+
+{% block title %}Candidate Profile | APP-{{ candidate.id | string | pad_zero(4) }}{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='confirm.css') }}">
+<style>
+    :root {
+        --bg-deep: #0f172a;
+        --card-bg: rgba(30, 41, 59, 0.7);
+        --accent: #6366f1;
+        --text-main: #f1f5f9;
+        --text-dim: #94a3b8;
+        --border: rgba(255, 255, 255, 0.08);
+        --green: #10b981;
+        --yellow: #f59e0b;
+        --red: #ef4444;
+    }
+
+    body {
+        background-color: var(--bg-deep);
+        color: var(--text-main);
+        font-family: 'Inter', sans-serif;
+    }
+
+    .decision-layout {
+        display: grid;
+        grid-template-columns: 320px 1fr 340px;
+        gap: 1.5rem;
+        max-width: 1600px;
+        margin: 0 auto;
+        padding: 1.5rem;
+        height: 100vh;
+        overflow: hidden;
+    }
+
+    /* Scrollable areas */
+    .zone-snap,
+    .zone-eval,
+    .zone-bench {
+        overflow-y: auto;
+        padding-right: 5px;
+        height: 100%;
+    }
+
+    .zone-snap::-webkit-scrollbar,
+    .zone-eval::-webkit-scrollbar,
+    .zone-bench::-webkit-scrollbar {
+        width: 4px;
+    }
+
+    .zone-snap::-webkit-scrollbar-thumb,
+    .zone-eval::-webkit-scrollbar-thumb,
+    .zone-bench::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.1);
+        border-radius: 10px;
+    }
+
+    /* Common Card */
+    .dec-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        padding: 1.5rem;
+        margin-bottom: 1.5rem;
+        backdrop-filter: blur(10px);
+        transition: all 0.3s ease;
+    }
+
+    .dec-card h2 {
+        font-size: 1rem;
+        text-transform: uppercase;
+        color: var(--text-dim);
+        margin-top: 0;
+        margin-bottom: 1.25rem;
+        letter-spacing: 0.05em;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+
+    /* Left Panel: Snapshot */
+    .c-identity h1 {
+        font-size: 1.5rem;
+        margin: 0;
+        color: #fff;
+    }
+
+    .c-meta {
+        font-size: 0.85rem;
+        color: var(--text-dim);
+        margin-top: 4px;
+    }
+
+    .rank-badge {
+        text-align: center;
+        padding: 1.5rem;
+        background: rgba(99, 102, 241, 0.1);
+        border-radius: 12px;
+        border: 1px solid rgba(99, 102, 241, 0.3);
+    }
+
+    .rank-pos {
+        font-size: 2.5rem;
+        font-weight: 800;
+        color: #818cf8;
+        line-height: 1;
+    }
+
+    .rank-ctx {
+        font-size: 0.8rem;
+        color: #a5b4fc;
+        margin-top: 8px;
+    }
+
+    .risk-strip {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+    }
+
+    .risk-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 0.75rem;
+        background: rgba(0, 0, 0, 0.2);
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    .risk-tag {
+        padding: 2px 8px;
+        border-radius: 100px;
+        font-size: 0.75rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+
+    .risk-low {
+        background: rgba(16, 185, 129, 0.1);
+        color: var(--green);
+        border: 1px solid rgba(16, 185, 129, 0.2);
+    }
+
+    .risk-med {
+        background: rgba(245, 158, 11, 0.1);
+        color: var(--yellow);
+        border: 1px solid rgba(245, 158, 11, 0.2);
+    }
+
+    .actions-btn {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-top: 1rem;
+    }
+
+    .btn-dec {
+        width: 100%;
+        padding: 12px;
+        border: none;
+        border-radius: 8px;
+        font-weight: 600;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 8px;
+        font-family: inherit;
+    }
+
+    .btn-short {
+        background: var(--green);
+        color: white;
+    }
+
+    .btn-short:hover {
+        background: #059669;
+        transform: translateY(-2px);
+    }
+
+    .btn-rej {
+        background: rgba(239, 68, 68, 0.1);
+        color: var(--red);
+        border: 1px solid rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-rej:hover {
+        background: rgba(239, 68, 68, 0.2);
+    }
+
+    .btn-seal {
+        background: var(--accent);
+        color: white;
+    }
+
+    /* Center Panel: Evaluation */
+    .eval-summary {
+        font-size: 1.05rem;
+        line-height: 1.6;
+        color: #e2e8f0;
+        font-style: italic;
+        border-left: 4px solid var(--accent);
+        padding-left: 1.5rem;
+    }
+
+    .skill-match-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+        gap: 10px;
+    }
+
+    .m-tag {
+        padding: 6px 12px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 6px;
+        font-size: 0.85rem;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .m-check {
+        color: var(--green);
+    }
+
+    .insight-card {
+        background: rgba(15, 23, 42, 0.4);
+        border-radius: 12px;
+        padding: 1.25rem;
+    }
+
+    .insight-row {
+        display: flex;
+        justify-content: space-between;
+        margin-bottom: 12px;
+        font-size: 0.9rem;
+    }
+
+    .insight-lbl {
+        color: var(--text-dim);
+    }
+
+    .insight-val {
+        color: var(--text-main);
+        font-weight: 500;
+    }
+
+    .obs-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+
+    .obs-item {
+        padding: 10px 0;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        font-size: 0.9rem;
+    }
+
+    .obs-dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: var(--yellow);
+    }
+
+    /* Right Panel: Benchmarks */
+    .bench-bar-wrap {
+        margin-bottom: 1.5rem;
+    }
+
+    .bench-label {
+        display: flex;
+        justify-content: space-between;
+        font-size: 0.85rem;
+        margin-bottom: 6px;
+    }
+
+    .bench-track {
+        height: 8px;
+        background: rgba(255, 255, 255, 0.05);
+        border-radius: 10px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .bar-avg {
+        height: 100%;
+        background: rgba(255, 255, 255, 0.1);
+        position: absolute;
+        top: 0;
+        left: 0;
+        transition: width 1s ease;
+    }
+
+    .bar-can {
+        height: 100%;
+        background: var(--accent);
+        position: absolute;
+        top: 0;
+        left: 0;
+        transition: width 1s ease;
+        border-right: 2px solid white;
+    }
+
+    .rec-notes-area {
+        width: 100%;
+        background: rgba(0, 0, 0, 0.3);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        padding: 1rem;
+        color: #fff;
+        font-family: inherit;
+        resize: none;
+        min-height: 120px;
+        outline: none;
+        transition: border-color 0.2s;
+    }
+
+    .rec-notes-area:focus {
+        border-color: var(--accent);
+    }
+
+    .btn-save-notes {
+        margin-top: 10px;
+        background: rgba(255, 255, 255, 0.1);
+        color: #fff;
+        padding: 6px 12px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+        font-size: 0.85rem;
+    }
+
+    /* Resume Dropdown Styling */
+    .ri-resume-dropdown {
+        border-top: 2px solid rgba(99, 102, 241, 0.3);
+        background: rgba(15, 23, 42, 0.2);
+    }
+
+    .ri-resume-toggle {
+        width: 100%;
+        background: none;
+        border: none;
+        padding: 1rem 1.5rem;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        cursor: pointer;
+        color: #f1f5f9;
+        font-family: inherit;
+    }
+
+    .ri-toggle-label {
+        font-size: 1.1rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .ri-resume-content {
+        max-height: 0;
+        overflow: hidden;
+        opacity: 0;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+    }
+
+    /* Audit Collapsible */
+    .audit-panel {
+        margin-top: 2rem;
+        border-top: 1px solid var(--border);
+        padding-top: 2rem;
+    }
+
+    .audit-toggle {
+        width: 100%;
+        background: none;
+        border: none;
+        color: var(--text-dim);
+        display: flex;
+        justify-content: space-between;
+        cursor: pointer;
+        padding: 1rem 0;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 1280px) {
+        .decision-layout {
+            grid-template-columns: 300px 1fr;
+            height: auto;
+            overflow: visible;
+        }
+
+        .zone-bench {
+            grid-column: 1 / -1;
+        }
+
+        .zone-snap,
+        .zone-eval,
+        .zone-bench {
+            height: auto;
+            overflow: visible;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="decision-layout">
+
+    <!-- 🔷 LEFT PANEL: Snapshot -->
+    <aside class="zone-snap">
+        <a href="{{ url_for('recruiter_dashboard') }}"
+            style="color: var(--text-dim); text-decoration: none; font-size: 0.85rem; display: block; margin-bottom: 1.5rem;">←
+            Exit to Dashboard</a>
+
+        <div class="dec-card c-identity">
+            <h1>{{ candidate.full_name or 'Unidentified' }}</h1>
+            <div class="c-meta">{{ candidate.applied_role or 'Candidate' }} • APP-{{ candidate.id | string | pad_zero(4)
+                }}</div>
+            <div class="c-meta" style="margin-top: 10px; font-size: 0.75rem;">Applied: {{ (candidate.created_at |
+                string)[:10] }}
+            </div>
+        </div>
+
+        <div class="dec-card">
+            <h2>🏆 Batch Context</h2>
+            <div class="rank-badge">
+                <div class="rank-pos">#{{ rank_pos }}</div>
+                <div class="rank-ctx">Top {{ 100 - percentile }}% in {{ total_batch }} candidates</div>
+            </div>
+        </div>
+
+        <div class="dec-card">
+            <h2>🚦 Risk Assessment</h2>
+            <div class="risk-strip">
+                <div class="risk-item">
+                    <span>Integrity Risk</span>
+                    <span class="risk-tag risk-low">LOW</span>
+                </div>
+                <div class="risk-item">
+                    <span>Fraud Prob.</span>
+                    <span class="risk-tag {{ 'risk-med' if (candidate.fraud_probability or 0) > 0.3 else 'risk-low' }}">
+                        {{ ((candidate.fraud_probability or 0) * 100)|round|int }}%
+                    </span>
+                </div>
+                <div class="risk-item">
+                    <span>Behav. Flags</span>
+                    <span class="risk-tag {{ 'risk-med' if behavior_obs|length > 2 else 'risk-low' }}">
+                        {{ behavior_obs|length }} Events
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <div class="dec-card">
+            <h2>🎯 Decision Controls</h2>
+            <div class="actions-btn">
+                <form action="{{ url_for('candidate_decision', candidate_id=candidate.id) }}" method="POST">
+                    <input type="hidden" name="decision" value="SHORTLIST">
+                    <button type="submit" class="btn-dec btn-short">🚀 Shortlist</button>
+                </form>
+                <form action="{{ url_for('candidate_decision', candidate_id=candidate.id) }}" method="POST">
+                    <input type="hidden" name="decision" value="REJECT">
+                    <button type="submit" class="btn-dec btn-rej">🚫 Reject</button>
+                </form>
+                {% if not final_score or not final_score.is_verified %}
+                <form action="{{ url_for('verify_candidate', candidate_id=candidate.id) }}" method="POST">
+                    <button type="submit" class="btn-dec btn-seal" {% if not interview or not final_score %}disabled{%
+                        endif %}>
+                        🔒 Verify & Seal
+                    </button>
+                </form>
+                {% else %}
+                <div class="insight-card"
+                    style="margin-top: 10px; border: 1px solid var(--green); background: rgba(16, 185, 129, 0.05); padding: 12px;">
+                    <div
+                        style="text-align: center; color: var(--green); font-size: 0.95rem; font-weight: 600; margin-bottom: 8px;">
+                        ✓ RECORD SEALED
+                    </div>
+                    <div
+                        style="font-size: 0.75rem; color: var(--text-dim); text-align: center; font-family: monospace;">
+                        <span style="display: block; margin-bottom: 4px;">Seal ID: {{ final_score.verification_hash[:12]
+                            if final_score.verification_hash else '—' }}</span>
+                        <span style="display: block;">Time: {{ final_score.verified_at[:10] if final_score.verified_at
+                            else '—' }}</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </aside>
+
+    <!-- 🔷 CENTER PANEL: Intelligence -->
+    <main class="zone-eval">
+        <div class="dec-card">
+            <h2>🤖 Executive Evaluation</h2>
+            <div class="eval-summary">
+                {% if final_score and final_score.combined_score > 75 %}
+                "Exceptional technical profile with high integrity. Strong potential for specialized roles."
+                {% elif final_score and final_score.combined_score > 60 %}
+                "Solid all-around candidate. Demonstrates clear competence and consistent behavioral patterns."
+                {% else %}
+                "Moderate score. Recommendation: Review behavioral flags and interview depth before proceeding."
+                {% endif %}
+            </div>
+        </div>
+
+        <div class="dec-card">
+            <h2>🛡 External Verification & Trust</h2>
+            <div class="dec-card">
+                <h2>🛡 External Verification & Trust</h2>
+
+                <!-- Trust Summary Card -->
+                {% if trust_report %}
+                <div class="insight-card" style="margin-bottom: 1.5rem;">
+                    <div
+                        style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; padding-bottom: 15px; border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <h3 style="font-size: 1rem; color: #fff; margin: 0;">Overall Trust Rating</h3>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <span style="font-size: 1.2rem;">{{ '🟢' if trust_report.overall_score >= 80 else '🟡' if
+                                trust_report.overall_score >= 60 else '🔴' }}</span>
+                            <strong
+                                style="color: {{ 'var(--green)' if trust_report.overall_score >= 80 else 'var(--yellow)' if trust_report.overall_score >= 60 else 'var(--red)' }}; font-size: 1.1rem;">{{
+                                trust_report.trust_level }} ({{ trust_report.overall_score }}%)</strong>
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 12px; font-size: 0.9rem;">
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Identity Confidence</span>
+                            <strong style="color: #fff;">{{ trust_report.identity.score }}%</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">GitHub Authenticity</span>
+                            <strong style="color: #fff;">{{ trust_report.github_authenticity }}%</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Certification Validation</span>
+                            <strong style="color: #fff;">{{ trust_report.certificates.score }}%</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between;">
+                            <span style="color: var(--text-dim);">Portfolio Health</span>
+                            <strong style="color: #fff;">{{ trust_report.portfolio.score }}%</strong>
+                        </div>
+                        <div style="display: flex; justify-content: space-between; grid-column: span 2;">
+                            <span style="color: var(--text-dim);">Behavioral Skill Alignment (Interview)</span>
+                            <strong style="color: #fff;">{{ trust_report.behavioral_alignment.score }}%</strong>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Detailed Breakdown Section -->
+                <div style="display: flex; flex-direction: column; gap: 1rem;">
+
+                    <!-- GitHub Verification -->
+                    <div class="insight-card">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4
+                                style="margin: 0; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.1rem;">🐙</span> GitHub Verification
+                            </h4>
+                            {% if trust_report.github_details and trust_report.github_details.username %}
+                            <span
+                                style="font-size: 0.8rem; padding: 4px 8px; background: rgba(16, 185, 129, 0.1); color: var(--green); border-radius: 6px; border: 1px solid rgba(16, 185, 129, 0.2);">{{
+                                trust_report.github_details.badge }}</span>
+                            {% else %}
+                            <span style="font-size: 0.8rem; padding: 4px 8px; color: var(--text-dim);">Not
+                                Provided</span>
+                            {% endif %}
+                        </div>
+                        {% if trust_report.github_details and trust_report.github_details.username %}
+                        <div
+                            style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-size: 0.85rem; color: var(--text-dim); background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px;">
+                            <div>Username: <strong style="color: #fff;">{{ trust_report.github_details.username
+                                    }}</strong></div>
+                            <div>Public Repos: <strong style="color: #fff;">{{ trust_report.github_details.public_repos
+                                    }}</strong></div>
+                            <div style="grid-column: span 2;">Primary Languages: <strong style="color: #fff;">
+                                    {% if trust_report.github_details.primary_languages %}
+                                    {% for lg, pct in trust_report.github_details.primary_languages.items() %}
+                                    {{ lg }} ({{ pct }}%){% if not loop.last %}, {% endif %}
+                                    {% endfor %}
+                                    {% else %}
+                                    None
+                                    {% endif %}
+                                </strong></div>
+                            <div>Last Activity: <strong style="color: #fff;">{{
+                                    trust_report.github_details.last_activity }}</strong></div>
+                            <div>Account Age: <strong style="color: #fff;">{{
+                                    trust_report.github_details.account_age_years }} Yrs</strong></div>
+                            <div
+                                style="grid-column: span 2; padding-top: 8px; border-top: 1px dashed rgba(255,255,255,0.1);">
+                                Authenticity Score: <strong style="color: var(--green);">{{
+                                    trust_report.github_details.github_score }} / 100</strong>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+
+                    <!-- Certificate Validation -->
+                    <div class="insight-card">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4
+                                style="margin: 0; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.1rem;">📜</span> Certificate Validation
+                            </h4>
+                        </div>
+                        <div
+                            style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; font-size: 0.85rem;">
+                            <strong style="color: #fff; display: block; margin-bottom: 6px;">Status: <span
+                                    style="color: {{ 'var(--green)' if trust_report.certificates.status == 'Verified' else 'var(--yellow)' }};">{{
+                                    trust_report.certificates.status }}</span></strong>
+                            <div style="display: flex; flex-direction: column; gap: 4px; color: var(--text-dim);">
+                                {% for detail in trust_report.certificates.details %}
+                                <span>• {{ detail }}</span>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Identity Confidence -->
+                    <div class="insight-card">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4
+                                style="margin: 0; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.1rem;">🔐</span> Identity Confidence
+                            </h4>
+                            <strong style="color: var(--green); font-size: 1.05rem;">{{ trust_report.identity.score
+                                }}%</strong>
+                        </div>
+                        <div
+                            style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; font-size: 0.85rem;">
+                            <span style="color: var(--text-dim); display: block; margin-bottom: 8px;">Name similarity
+                                analysis:</span>
+                            <div
+                                style="display: flex; flex-direction: column; gap: 6px; padding-left: 10px; border-left: 2px solid rgba(255,255,255,0.1);">
+                                {% for detail in trust_report.identity.details %}
+                                <div style="color: var(--text-dim);">• {{ detail }}</div>
+                                {% endfor %}
+                                {% if not trust_report.identity.details %}
+                                <div style="color: var(--text-dim);">No digital identities provided.</div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Behavioral Skill Alignment -->
+                    <div class="insight-card">
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                            <h4
+                                style="margin: 0; color: #fff; font-size: 0.95rem; display: flex; align-items: center; gap: 8px;">
+                                <span style="font-size: 1.1rem;">🎯</span> Behavioral Skill Alignment
+                            </h4>
+                            <strong
+                                style="color: {{ 'var(--green)' if trust_report.behavioral_alignment.score >= 80 else 'var(--yellow)' }}; font-size: 1.05rem;">{{
+                                trust_report.behavioral_alignment.score }}%</strong>
+                        </div>
+                        <div
+                            style="background: rgba(0,0,0,0.2); padding: 12px; border-radius: 8px; font-size: 0.85rem;">
+                            <div style="color: var(--text-dim); margin-bottom: 12px;">Comparing resume claims against
+                                interview transcript depth.</div>
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 10px;">
+                                {% if trust_report.behavioral_alignment.details is mapping %}
+                                {% for skill, depth in trust_report.behavioral_alignment.details.items() %}
+                                <div
+                                    style="display: flex; justify-content: space-between; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px;">
+                                    <span style="color: var(--text-dim);">{{ skill }}</span>
+                                    <strong style="color: #fff; text-align: right;">{{ depth }}</strong>
+                                </div>
+                                {% endfor %}
+                                {% else %}
+                                <div style="color: var(--text-dim);">{{ trust_report.behavioral_alignment.details }}
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+                {% else %}
+                <div class="insight-card"
+                    style="margin-bottom: 1.5rem; text-align: center; color: var(--text-dim); padding: 20px;">
+                    Verification & Trust report has not been generated yet. Please wait for the initial NLP processing
+                    to complete.
+                </div>
+                {% endif %}
+            </div>
+
+            <div class="dec-card">
+                <h2>🎙 Interview Intelligence</h2>
+                <div class="insight-card" style="margin-bottom: 1.5rem;">
+                    <div class="insight-row">
+                        <span class="insight-lbl">Integrity Index</span>
+                        <span class="insight-val" style="color: var(--green);">{{
+                            "%.1f"|format(interview.integrity_index)
+                            if interview else "0.0" }}%</span>
+                    </div>
+                    <div class="insight-row">
+                        <span class="insight-lbl">Answer Quality</span>
+                        <span class="insight-val" style="color: var(--accent);">{{
+                            "%.1f"|format(interview.final_answer_score) if interview else "0.0" }}</span>
+                    </div>
+                </div>
+                {% set int_score = (interview.final_answer_score if interview else 0) %}
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <div
+                        class="score-circle {% if int_score >= 80 %}high{% elif int_score >= 50 %}medium{% else %}low{% endif %}">
+                        {{ int_score|round|int }}
+                        <span class="label">SCORE</span>
+                    </div>
+                    {% if interview %}
+                    <a href="{{ url_for('interview.results', interview_id=interview.id) }}" class="verify-btn"
+                        style="text-decoration: none; display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 500;">
+                        🎬 Analyze Interview
+                    </a>
+                    {% endif %}
+                </div>
+
+                <div class="insight-card">
+                    <h3 style="font-size: 0.85rem; color: var(--text-dim); margin-bottom: 10px;">🔍 FINDINGS</h3>
+                    {% if behavior_obs %}
+                    <ul class="obs-list">
+                        {% for obs in behavior_obs %}
+                        <li class="obs-item"><span class="obs-dot"></span> {{ obs }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p style="font-size: 0.9rem; color: var(--green);">No behavioral anomalies detected.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Full Resume Summary Dropdown -->
+            <div class="dec-card" style="padding: 0; overflow: hidden; margin-top: 1.5rem;">
+                <div class="ri-header" onclick="toggleResume()"
+                    style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span style="font-size: 1.25rem;">📄</span>
+                        <h3 style="margin: 0; color: #fff; font-size: 1.1rem; font-weight: 500;">Full Resume Summary
+                        </h3>
+                    </div>
+                    <span id="resumeToggleIcon"
+                        style="color: var(--text-dim); transition: transform 0.3s; font-size: 1.25rem;">+</span>
+                </div>
+
+                <div class="ri-resume-content" id="resumeContent" style="padding: 0 1.5rem 1.5rem;">
+
+
+                    <h4 style="color: var(--text-main); margin-bottom: 0.5rem; font-size: 0.95rem;">📝 Candidate Summary
+                    </h4>
+                    <p style="font-size: 0.9rem; line-height: 1.6; color: var(--text-dim); margin-bottom: 1.5rem;">
+                        {{ candidate.user_edited_summary or 'No submitted summary available.' }}
+                    </p>
+
+                    <div class="insight-card" style="margin-bottom: 1.5rem;">
+                        <h4 style="color: var(--text-main); margin-bottom: 0.8rem; font-size: 0.95rem;">👤 Identity</h4>
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                            <div><span
+                                    style="color: var(--text-dim); font-size: 0.85rem; display: block; margin-bottom: 4px;">Full
+                                    Name</span><span style="font-size: 0.95rem;">{{ candidate.full_name or '—' }}</span>
+                            </div>
+                            <div><span
+                                    style="color: var(--text-dim); font-size: 0.85rem; display: block; margin-bottom: 4px;">Email</span><span
+                                    style="font-size: 0.95rem;">{{ candidate.email_extracted or '—' }}</span></div>
+                            <div><span
+                                    style="color: var(--text-dim); font-size: 0.85rem; display: block; margin-bottom: 4px;">Phone</span><span
+                                    style="font-size: 0.95rem;">{{ candidate.phone or '—' }}</span></div>
+                            <div><span
+                                    style="color: var(--text-dim); font-size: 0.85rem; display: block; margin-bottom: 4px;">Location</span><span
+                                    style="font-size: 0.95rem;">{{ candidate.location or '—' }}</span></div>
+                        </div>
+                    </div>
+
+                    <div class="insight-card" style="margin-bottom: 1.5rem;">
+                        <h4 style="color: var(--text-main); margin-bottom: 0.8rem; font-size: 0.95rem;">🛠 Skills</h4>
+                        <div style="display: flex; flex-wrap: wrap; gap: 8px;">
+                            {% if skills %}
+                            {% for skill in skills %}
+                            <span
+                                style="padding: 5px 12px; background: rgba(99,102,241,0.1); border: 1px solid rgba(99,102,241,0.2); color: #a5b4fc; border-radius: 6px; font-size: 0.85rem;">{{
+                                skill }}</span>
+                            {% endfor %}
+                            {% else %}
+                            <span style="color: var(--text-dim); font-size: 0.85rem;">No skills detected.</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="insight-card" style="margin-bottom: 1.5rem;">
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+                            <div>
+                                <h4 style="color: var(--text-main); margin-bottom: 0.8rem; font-size: 0.95rem;">💼
+                                    Experience</h4>
+                                <div style="margin-bottom: 10px;"><span
+                                        style="color: var(--text-dim); font-size: 0.85rem; display: block;">Years:</span>
+                                    <span style="font-size: 0.95rem;">{{ candidate.years_experience }}</span>
+                                </div>
+                                {% if extended.get('job_titles') %}
+                                <div style="margin-bottom: 10px;"><span
+                                        style="color: var(--text-dim); font-size: 0.85rem; display: block;">Titles:</span>
+                                    <span style="font-size: 0.95rem;">{{ extended.job_titles | join(', ') }}</span>
+                                </div>
+                                {% endif %}
+                                {% if extended.get('companies') %}
+                                <div style="margin-bottom: 10px;"><span
+                                        style="color: var(--text-dim); font-size: 0.85rem; display: block;">Companies:</span>
+                                    <span style="font-size: 0.95rem;">{{ extended.companies | join(', ') }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                            <div>
+                                <h4 style="color: var(--text-main); margin-bottom: 0.8rem; font-size: 0.95rem;">🎓
+                                    Education
+                                </h4>
+                                <div style="margin-bottom: 10px;"><span
+                                        style="color: var(--text-dim); font-size: 0.85rem; display: block;">Degree:</span>
+                                    <span style="font-size: 0.95rem;">{{ candidate.degree or '—' }}</span>
+                                </div>
+                                <div style="margin-bottom: 10px;"><span
+                                        style="color: var(--text-dim); font-size: 0.85rem; display: block;">University:</span>
+                                    <span style="font-size: 0.95rem;">{{ candidate.university or '—' }}</span>
+                                </div>
+                                {% if extended.get('graduation_year') %}
+                                <div style="margin-bottom: 10px;"><span
+                                        style="color: var(--text-dim); font-size: 0.85rem; display: block;">Year:</span>
+                                    <span style="font-size: 0.95rem;">{{ extended.graduation_year }}</span>
+                                </div>
+                                {% endif %}
+                                {% if extended.get('gpa') %}
+                                <div style="margin-bottom: 10px;"><span
+                                        style="color: var(--text-dim); font-size: 0.85rem; display: block;">GPA:</span>
+                                    <span style="font-size: 0.95rem;">{{ extended.gpa }}</span>
+                                </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+
+                    <h4 style="color: var(--text-main); margin-bottom: 0.5rem; font-size: 0.95rem;">🎬 Interview
+                        Analysis
+                        (Transcript)</h4>
+                    <div
+                        style="font-size: 0.85rem; line-height: 1.6; color: var(--text-dim); background: rgba(0,0,0,0.2); padding: 1rem; border-radius: 8px; max-height: 250px; overflow-y: auto; margin-bottom: 1.5rem;">
+                        {% if interview and interview.transcript %}
+                        {{ interview.transcript | replace('\n', '<br>') | safe }}
+                        {% else %}
+                        No interview transcript available.
+                        {% endif %}
+                    </div>
+                    <a href="{{ url_for('resume.view_pdf', candidate_id=candidate.id) }}" target="_blank"
+                        style="color: var(--accent); font-size: 0.85rem;">View Original Document ↗</a>
+                </div>
+            </div>
+
+            <!-- Supporting Documents Dropdown -->
+            <div class="dec-card" style="padding: 0; overflow: hidden; margin-top: 1.5rem;">
+                <div class="ri-header" onclick="toggleDocs()"
+                    style="cursor: pointer; display: flex; justify-content: space-between; align-items: center; padding: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span style="font-size: 1.25rem;">📁</span>
+                        <h3 style="margin: 0; color: #fff; font-size: 1.1rem; font-weight: 500;">Supporting Documents
+                        </h3>
+                    </div>
+                    <span id="docsToggleIcon"
+                        style="color: var(--text-dim); transition: transform 0.3s; font-size: 1.25rem;">+</span>
+                </div>
+
+                <div class="ri-resume-content" id="docsContent" style="padding: 0 1.5rem 1.5rem; display: none;">
+                    {% if uploaded_docs %}
+                    <div style="display: flex; flex-direction: column; gap: 10px;">
+                        {% for doc in uploaded_docs %}
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 12px 15px; border-radius: 8px;">
+                            <div>
+                                <strong style="color: var(--text-main); font-size: 0.95rem;">{{ doc.type }}</strong>
+                                <div style="font-size: 0.8rem; color: var(--text-dim); margin-top: 4px;">{{
+                                    doc.original_name }}</div>
+                            </div>
+                            <a href="{{ url_for('resume.view_document', filename=doc.filename) }}" target="_blank"
+                                class="verify-btn"
+                                style="padding: 6px 12px; font-size: 0.85rem; text-decoration: none;">View File</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p style="font-size: 0.95rem; line-height: 1.6; color: var(--text-dim); margin: 0;">
+                        No supporting documents uploaded by the candidate yet. Note: Missing core documents may
+                        negatively
+                        impact the combined score.
+                    </p>
+                    {% endif %}
+                </div>
+            </div>
+    </main>
+
+    <!-- 🔷 RIGHT PANEL: Benchmarks -->
+    <aside class="zone-bench">
+        <div class="dec-card">
+            <h2>📊 Company Benchmarks</h2>
+            {% set bm_items = [
+            ('Total', (final_score.combined_score if final_score else 0), (benchmarks.avg_combined or 0)),
+            ('Resume', (candidate.resume_score or 0), (benchmarks.avg_resume or 0)),
+            ('Integrity', (interview.integrity_index if interview else 0), (benchmarks.avg_integrity or 0))
+            ] %}
+
+            {% for lbl, val, avg in bm_items %}
+            <div class="bench-bar-wrap">
+                <div class="bench-label">
+                    <span>{{ lbl }}</span>
+                    <span>{{ val|round|int }} vs {{ avg|round|int }}</span>
+                </div>
+                <div class="bench-track">
+                    <div class="bar-avg" style="width: {{ avg }}%;"></div>
+                    <div class="bar-can" style="width: {{ val }}%;"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <div class="dec-card">
+            <h2>📝 Private Notes</h2>
+            <form action="{{ url_for('candidate_notes', candidate_id=candidate.id) }}" method="POST">
+                <textarea name="notes" class="rec-notes-area"
+                    placeholder="Add evaluation notes...">{{ candidate.recruiter_notes or '' }}</textarea>
+                <div style="display:flex; justify-content: flex-end; margin-top: 10px;">
+                    <button type="submit" class="btn-save-notes">Save Notes</button>
+                </div>
+            </form>
+        </div>
+
+        <div class="dec-card audit-panel">
+            <button type="button" class="audit-toggle" id="auditToggle">
+                <span>🔐 Forensic Details</span>
+                <span>⌄</span>
+            </button>
+            <div id="auditBody" style="display: none; padding-top: 1rem; font-size: 0.75rem; color: var(--text-dim);">
+                <div>Resume Hash: {{ candidate.resume_hash }}</div>
+                <div style="margin-top: 5px;">Created: {{ candidate.created_at }}</div>
+            </div>
+        </div>
+    </aside>
+
+</div>
+
+<script>
+    function toggleResume() {
+        const content = document.getElementById('resumeContent');
+        const icon = document.getElementById('resumeToggleIcon');
+        if (content.style.display === 'none' || content.style.display === '') {
+            content.style.display = 'flex';
+            // Slight delay so display: flex applies before transition triggers
+            setTimeout(() => {
+                content.style.maxHeight = '2000px';
+                content.style.opacity = '1';
+                icon.style.transform = 'rotate(45deg)';
+            }, 10);
+        } else {
+            content.style.maxHeight = '0';
+            content.style.opacity = '0';
+            icon.style.transform = 'rotate(0deg)';
+            setTimeout(() => {
+                content.style.display = 'none';
+            }, 500); // Wait for transition
+        }
+    }
+
+    function toggleDocs() {
+        const content = document.getElementById('docsContent');
+        const icon = document.getElementById('docsToggleIcon');
+        if (content.style.display === 'none' || content.style.display === '') {
+            content.style.display = 'flex';
+            setTimeout(() => {
+                content.style.maxHeight = '2000px';
+                content.style.opacity = '1';
+                icon.style.transform = 'rotate(45deg)';
+            }, 10);
+        } else {
+            content.style.maxHeight = '0';
+            content.style.opacity = '0';
+            icon.style.transform = 'rotate(0deg)';
+            setTimeout(() => {
+                content.style.display = 'none';
+            }, 500);
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        // Initial state for resume content (hidden)
+        const resumeContent = document.getElementById('resumeContent');
+        if (resumeContent) {
+            resumeContent.style.display = 'none';
+        }
+
+        const audTog = document.getElementById('auditToggle');
+        const audBody = document.getElementById('auditBody');
+        if (audTog && audBody) {
+            audTog.addEventListener('click', () => {
+                audBody.style.display = audBody.style.display === 'none' ? 'block' : 'none';
+            });
+        }
+    });
+</script>
+{% endblock %}

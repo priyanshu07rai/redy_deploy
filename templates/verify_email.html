@@ -1,0 +1,89 @@
+{% extends 'base.html' %}
+
+{% block title %}Verify Email{% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+    <div class="auth-card glass-card">
+        <!-- Brand Section -->
+        <div class="auth-brand"
+            style="background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 2.5rem; text-align: center;">
+            <div class="brand-icon"
+                style="margin: 0 auto 1rem; width: 56px; height: 56px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 8px 16px rgba(0,0,0,0.3);">
+                📧</div>
+            <h1 style="color: white; font-size: 1.5rem; margin-bottom: 0.5rem;">Verify Your Email</h1>
+            <p style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">Enter the 6-digit code sent to your inbox</p>
+        </div>
+
+        <div class="auth-card-body" style="padding: 2.5rem;">
+            {% for message in get_flashed_messages() %}
+            <div
+                class="flash-message {% if 'sent' in message or 'success' in message %}flash-success{% else %}flash-error{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+
+            <div class="otp-info"
+                style="text-align: center; margin-bottom: 2rem; color: var(--text-secondary); font-size: 0.95rem;">
+                We sent a verification code to<br>
+                <strong style="color: var(--primary-light);">{{ email }}</strong>
+            </div>
+
+            <form method="post" id="verifyForm">
+                <div class="form-group" style="text-align: center;">
+                    <label for="otp" style="text-align: left;">Verification Code</label>
+                    <input type="text" name="otp" id="otp" class="form-control" placeholder="000000"
+                        style="letter-spacing: 0.5em; text-align: center; font-size: 1.5rem; font-weight: 700;" required
+                        maxlength="6" pattern="[0-9]{6}" autocomplete="one-time-code" inputmode="numeric">
+                </div>
+
+                <button type="submit" class="btn-primary">
+                    Verify & Create Account
+                </button>
+            </form>
+
+            <div class="otp-timer" id="timerDisplay"
+                style="text-align: center; margin-top: 1.5rem; color: var(--text-muted); font-size: 0.85rem;">
+                Code expires in <span id="countdown" style="font-weight: 600; color: var(--text-secondary);">5:00</span>
+            </div>
+
+            <div
+                style="margin-top: 2rem; border-top: 1px solid var(--card-border); padding-top: 1.5rem; text-align: center; display: flex; flex-direction: column; gap: 1rem;">
+                <form method="post" action="{{ url_for('auth.resend_otp') }}">
+                    <button type="submit"
+                        style="background: transparent; border: 1px solid var(--input-border); color: var(--text-secondary); padding: 0.6rem 1.2rem; border-radius: 8px; cursor: pointer; font-size: 0.85rem; font-weight: 600; transition: var(--transition);">
+                        Resend Code
+                    </button>
+                </form>
+                <a href="{{ url_for('auth.register') }}"
+                    style="color: var(--text-muted); font-size: 0.85rem; text-decoration: none;">← Back to Register</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Auto-format OTP input
+    document.getElementById('otp').addEventListener('input', function (e) {
+        this.value = this.value.replace(/[^0-9]/g, '').slice(0, 6);
+    });
+
+    // Countdown timer (5 minutes)
+    (function () {
+        let seconds = 300;
+        const display = document.getElementById('countdown');
+        const interval = setInterval(function () {
+            seconds--;
+            if (seconds <= 0) {
+                clearInterval(interval);
+                display.textContent = 'Expired';
+                display.style.color = '#ef4444';
+                return;
+            }
+            const m = Math.floor(seconds / 60);
+            const s = seconds % 60;
+            display.textContent = m + ':' + (s < 10 ? '0' : '') + s;
+        }, 1000);
+    })();
+</script>
+{% endblock %}

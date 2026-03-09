@@ -1,0 +1,695 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Candidate Comparison — Intelligence System</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+        rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg: #0a0f1e;
+            --surface: #111827;
+            --surface2: #1a2235;
+            --border: rgba(255, 255, 255, 0.07);
+            --green: #00ff9d;
+            --yellow: #f7c32e;
+            --red: #ff4d4d;
+            --blue: #4da6ff;
+            --purple: #a78bfa;
+            --text: #e2e8f0;
+            --text-dim: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+        }
+
+        .nav {
+            background: rgba(17, 24, 39, 0.95);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 32px;
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .nav a {
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.85rem;
+        }
+
+        .nav a:hover {
+            color: var(--green);
+        }
+
+        .nav-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--blue);
+            margin-left: auto;
+        }
+
+        .page {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 32px 24px;
+        }
+
+        .page-header {
+            text-align: center;
+            margin-bottom: 40px;
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(135deg, var(--blue), var(--purple));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .page-header p {
+            color: var(--text-dim);
+            margin-top: 8px;
+        }
+
+        /* Candidate Headers */
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: 1fr auto 1fr;
+            gap: 0;
+            margin-bottom: 32px;
+        }
+
+        .cand-header {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 28px;
+            text-align: center;
+        }
+
+        .cand-header h2 {
+            font-size: 1.4rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+
+        .cand-header.a h2 {
+            color: var(--blue);
+        }
+
+        .cand-header.b h2 {
+            color: var(--purple);
+        }
+
+        .cand-label {
+            display: inline-block;
+            padding: 4px 14px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .cand-label.a {
+            background: rgba(77, 166, 255, 0.15);
+            color: var(--blue);
+        }
+
+        .cand-label.b {
+            background: rgba(167, 139, 250, 0.15);
+            color: var(--purple);
+        }
+
+        .vs-divider {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0 24px;
+            font-size: 2rem;
+            font-weight: 800;
+            color: var(--text-dim);
+        }
+
+        .hire-badge {
+            display: inline-block;
+            padding: 8px 20px;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            margin-top: 12px;
+        }
+
+        .confidence-ring {
+            font-size: 2.8rem;
+            font-weight: 800;
+            margin: 12px 0 4px;
+        }
+
+        /* Score Table */
+        .score-table-wrapper {
+            margin-bottom: 32px;
+        }
+
+        .score-table-wrapper h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        .score-row {
+            display: grid;
+            grid-template-columns: 1fr 200px 1fr;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 0;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .score-row:last-child {
+            border-bottom: none;
+        }
+
+        .score-val {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .score-val.a {
+            color: var(--blue);
+            text-align: right;
+        }
+
+        .score-val.b {
+            color: var(--purple);
+            text-align: left;
+        }
+
+        .score-label {
+            text-align: center;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+        }
+
+        .winner-indicator {
+            font-size: 0.7rem;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-weight: 600;
+        }
+
+        .win-a {
+            background: rgba(77, 166, 255, 0.2);
+            color: var(--blue);
+        }
+
+        .win-b {
+            background: rgba(167, 139, 250, 0.2);
+            color: var(--purple);
+        }
+
+        .win-tie {
+            background: rgba(255, 255, 255, 0.08);
+            color: var(--text-dim);
+        }
+
+        /* Skills Section */
+        .skills-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .skills-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .skills-card h4 {
+            font-size: 0.9rem;
+            margin-bottom: 14px;
+        }
+
+        .skill-chip {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            margin: 3px;
+            font-weight: 500;
+        }
+
+        .skill-unique-a {
+            background: rgba(77, 166, 255, 0.15);
+            color: var(--blue);
+            border: 1px solid rgba(77, 166, 255, 0.2);
+        }
+
+        .skill-unique-b {
+            background: rgba(167, 139, 250, 0.15);
+            color: var(--purple);
+            border: 1px solid rgba(167, 139, 250, 0.2);
+        }
+
+        .skill-shared {
+            background: rgba(0, 255, 157, 0.1);
+            color: var(--green);
+            border: 1px solid rgba(0, 255, 157, 0.2);
+        }
+
+        /* Charts */
+        .charts-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 24px;
+            margin-bottom: 32px;
+        }
+
+        .chart-card {
+            background: var(--surface);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+        }
+
+        .chart-card h4 {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            margin-bottom: 16px;
+            text-align: center;
+        }
+
+        /* AI Recommendation */
+        .ai-card {
+            background: linear-gradient(135deg, rgba(77, 166, 255, 0.05), rgba(167, 139, 250, 0.05));
+            border: 1px solid rgba(77, 166, 255, 0.2);
+            border-radius: 16px;
+            padding: 28px;
+            margin-bottom: 32px;
+        }
+
+        .ai-card h3 {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--blue);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .ai-verdict-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+            margin-bottom: 20px;
+        }
+
+        .ai-verdict-item {
+            text-align: center;
+        }
+
+        .ai-verdict-label {
+            font-size: 0.7rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 6px;
+        }
+
+        .ai-verdict-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .val-a {
+            color: var(--blue);
+        }
+
+        .val-b {
+            color: var(--purple);
+        }
+
+        .ai-reason {
+            background: rgba(0, 0, 0, 0.25);
+            border-radius: 8px;
+            padding: 14px 18px;
+            color: var(--text);
+            font-size: 0.9rem;
+            line-height: 1.6;
+            margin-bottom: 16px;
+        }
+
+        .strengths-risks {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+        }
+
+        .strengths-risks-col {
+            background: rgba(0, 0, 0, 0.2);
+            border-radius: 10px;
+            padding: 14px;
+        }
+
+        .strengths-risks-col h5 {
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            text-transform: uppercase;
+            margin-bottom: 10px;
+        }
+
+        .strengths-risks-col li {
+            font-size: 0.85rem;
+            color: var(--text);
+            margin-bottom: 5px;
+            list-style: none;
+            padding-left: 16px;
+            position: relative;
+        }
+
+        .strengths-risks-col li::before {
+            content: '•';
+            position: absolute;
+            left: 0;
+            color: var(--green);
+        }
+
+        .risk-li::before {
+            color: var(--red) !important;
+        }
+
+        .back-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 8px 18px;
+            color: var(--text-dim);
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .back-btn:hover {
+            border-color: var(--blue);
+            color: var(--blue);
+        }
+
+        @media (max-width: 768px) {
+            .comparison-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .vs-divider {
+                padding: 8px 0;
+            }
+
+            .ai-verdict-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .charts-row,
+            .skills-grid,
+            .strengths-risks {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="nav">
+        <a href="{{ url_for('recruiter_dashboard') }}">← Dashboard</a>
+        <span style="color: var(--border);">|</span>
+        <span style="font-size: 0.85rem; color: var(--text-dim);">Candidate Intelligence Comparison</span>
+        <span class="nav-title">⚖️ Compare Mode</span>
+    </div>
+
+    <div class="page">
+        <div class="page-header">
+            <h1>⚖️ Side-by-Side Candidate Analysis</h1>
+            <p>AI-powered decision intelligence — powered by Gemini</p>
+        </div>
+
+        <!-- Candidate Headers -->
+        <div class="comparison-grid">
+            <div class="cand-header a">
+                <span class="cand-label a">CANDIDATE A</span>
+                <h2>{{ cand1.full_name or 'Candidate A' }}</h2>
+                <div style="color: var(--text-dim); font-size: 0.85rem;">{{ cand1.degree or '' }} {% if cand1.university
+                    %}— {{ cand1.university }}{% endif %}</div>
+                <div style="color: var(--text-dim); font-size: 0.8rem; margin-top: 4px;">{{ cand1.years_experience or 0
+                    }} yrs experience</div>
+                <div class="confidence-ring" style="color: {{ hire1[1] }};">{{ hc1 }}%</div>
+                <div style="color: var(--text-dim); font-size: 0.75rem;">Hiring Confidence</div>
+                <div class="hire-badge"
+                    style="background: {{ hire1[1] }}22; color: {{ hire1[1] }}; border: 1px solid {{ hire1[1] }}44;">{{
+                    hire1[0] }}</div>
+            </div>
+
+            <div class="vs-divider">VS</div>
+
+            <div class="cand-header b">
+                <span class="cand-label b">CANDIDATE B</span>
+                <h2>{{ cand2.full_name or 'Candidate B' }}</h2>
+                <div style="color: var(--text-dim); font-size: 0.85rem;">{{ cand2.degree or '' }} {% if cand2.university
+                    %}— {{ cand2.university }}{% endif %}</div>
+                <div style="color: var(--text-dim); font-size: 0.8rem; margin-top: 4px;">{{ cand2.years_experience or 0
+                    }} yrs experience</div>
+                <div class="confidence-ring" style="color: {{ hire2[1] }};">{{ hc2 }}%</div>
+                <div style="color: var(--text-dim); font-size: 0.75rem;">Hiring Confidence</div>
+                <div class="hire-badge"
+                    style="background: {{ hire2[1] }}22; color: {{ hire2[1] }}; border: 1px solid {{ hire2[1] }}44;">{{
+                    hire2[0] }}</div>
+            </div>
+        </div>
+
+        <!-- Score Comparison Table -->
+        <div class="score-table-wrapper">
+            <h3>📊 Score Breakdown</h3>
+            {% set rows = [
+            ('Resume Score', (cand1.resume_score or 0)|round|int, (cand2.resume_score or 0)|round|int, '%'),
+            ('Interview Score', (fs1.combined_score or 0)|round|int, (fs2.combined_score or 0)|round|int, '%'),
+            ('Trust Rating', (tr1.overall_score or 0)|round|int, (tr2.overall_score or 0)|round|int, '%'),
+            ('GitHub Authenticity', (tr1.github_authenticity or 0)|round|int, (tr2.github_authenticity or 0)|round|int,
+            '%'),
+            ('Identity Confidence', ((tr1.identity or {}).score or 0)|round|int, ((tr2.identity or {}).score or
+            0)|round|int, '%'),
+            ('Cert Validity', ((tr1.certificates or {}).score or 0)|round|int, ((tr2.certificates or {}).score or
+            0)|round|int, '%'),
+            ] %}
+            {% for label, v1, v2, unit in rows %}
+            <div class="score-row">
+                <div style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:10px;">
+                    {% if v1 > v2 %}<span class="winner-indicator win-a">HIGHER</span>{% elif v1 == v2 %}<span
+                        class="winner-indicator win-tie">TIE</span>{% endif %}
+                    <span class="score-val a">{{ v1 }}{{ unit }}</span>
+                </div>
+                <div class="score-label">{{ label }}</div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span class="score-val b">{{ v2 }}{{ unit }}</span>
+                    {% if v2 > v1 %}<span class="winner-indicator win-b">HIGHER</span>{% elif v1 == v2 %}<span
+                        class="winner-indicator win-tie">TIE</span>{% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Radar Chart Row -->
+        <div class="charts-row">
+            <div class="chart-card">
+                <h4>🕸 Skill Radar Comparison</h4>
+                <canvas id="radarChart" height="260"></canvas>
+            </div>
+            <div class="chart-card">
+                <h4>📊 Score Bar Comparison</h4>
+                <canvas id="barChart" height="260"></canvas>
+            </div>
+        </div>
+
+        <!-- Skills Overlap -->
+        <div class="skills-grid">
+            <div class="skills-card">
+                <h4 style="color: var(--blue);">🔷 Candidate A — Unique Skills</h4>
+                {% set skills1_set = skills1 %}
+                {% set skills2_set = skills2 %}
+                {% for skill in skills1 %}
+                {% if skill not in skills2 %}
+                <span class="skill-chip skill-unique-a">{{ skill }}</span>
+                {% else %}
+                <span class="skill-chip skill-shared">{{ skill }}</span>
+                {% endif %}
+                {% endfor %}
+            </div>
+            <div class="skills-card">
+                <h4 style="color: var(--purple);">🔷 Candidate B — Unique Skills</h4>
+                {% for skill in skills2 %}
+                {% if skill not in skills1 %}
+                <span class="skill-chip skill-unique-b">{{ skill }}</span>
+                {% else %}
+                <span class="skill-chip skill-shared">{{ skill }}</span>
+                {% endif %}
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- AI Recommendation -->
+        {% if ai_comparison %}
+        <div class="ai-card">
+            <h3>🤖 AI Executive Recommendation</h3>
+            <div class="ai-verdict-grid">
+                <div class="ai-verdict-item">
+                    <div class="ai-verdict-label">Stronger Technical</div>
+                    <div class="ai-verdict-value {{ 'val-a' if ai_comparison.stronger_technical == 'A' else 'val-b' }}">
+                        Candidate {{ ai_comparison.stronger_technical }}</div>
+                </div>
+                <div class="ai-verdict-item">
+                    <div class="ai-verdict-label">Stronger Communication</div>
+                    <div
+                        class="ai-verdict-value {{ 'val-a' if ai_comparison.stronger_communication == 'A' else 'val-b' }}">
+                        Candidate {{ ai_comparison.stronger_communication }}</div>
+                </div>
+                <div class="ai-verdict-item">
+                    <div class="ai-verdict-label">Lower Risk Profile</div>
+                    <div class="ai-verdict-value {{ 'val-a' if ai_comparison.lower_risk == 'A' else 'val-b' }}">
+                        Candidate {{ ai_comparison.lower_risk }}</div>
+                </div>
+                <div class="ai-verdict-item">
+                    <div class="ai-verdict-label">⭐ Recommended Hire</div>
+                    <div class="ai-verdict-value {{ 'val-a' if ai_comparison.recommended_hire == 'A' else 'val-b' }}"
+                        style="font-size:1.6rem;">Candidate {{ ai_comparison.recommended_hire }}</div>
+                </div>
+            </div>
+            <div class="ai-reason">💡 {{ ai_comparison.recommendation_reason }}</div>
+            <div class="strengths-risks">
+                <div class="strengths-risks-col">
+                    <h5 style="color: var(--blue);">Candidate A — Strengths</h5>
+                    <ul>{% for s in ai_comparison.a_strengths %}<li>{{ s }}</li>{% endfor %}</ul>
+                    <h5 style="color: var(--red); margin-top: 12px;">Risks</h5>
+                    <ul>{% for r in ai_comparison.a_risks %}<li class="risk-li">{{ r }}</li>{% endfor %}</ul>
+                </div>
+                <div class="strengths-risks-col">
+                    <h5 style="color: var(--purple);">Candidate B — Strengths</h5>
+                    <ul>{% for s in ai_comparison.b_strengths %}<li>{{ s }}</li>{% endfor %}</ul>
+                    <h5 style="color: var(--red); margin-top: 12px;">Risks</h5>
+                    <ul>{% for r in ai_comparison.b_risks %}<li class="risk-li">{{ r }}</li>{% endfor %}</ul>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="ai-card" style="text-align:center; color: var(--text-dim);">
+            <p>🤖 AI Comparison unavailable — Gemini API not configured or interview data missing.</p>
+        </div>
+        {% endif %}
+
+        <div style="text-align:center; margin-top: 16px;">
+            <a href="{{ url_for('recruiter_dashboard') }}" class="back-btn">← Back to Dashboard</a>
+            <a href="{{ url_for('candidate_profile', candidate_id=cand1.id) }}" class="back-btn"
+                style="margin-left:12px;">View Candidate A Profile</a>
+            <a href="{{ url_for('candidate_profile', candidate_id=cand2.id) }}" class="back-btn"
+                style="margin-left:12px;">View Candidate B Profile</a>
+        </div>
+    </div>
+
+    <script>
+        // Radar Chart
+        const radarCtx = document.getElementById('radarChart').getContext('2d');
+        new Chart(radarCtx, {
+            type: 'radar',
+            data: {
+                labels: ['Resume', 'Interview', 'Trust', 'GitHub', 'Identity', 'Certs'],
+                datasets: [{
+                    label: '{{ cand1.full_name or "Candidate A" }}',
+                    data: [
+                        {{ (cand1.resume_score or 0) | round | int }},
+                {{ (fs1.combined_score or 0) | round | int }},
+            {{ (tr1.overall_score or 0) | round | int }},
+            {{ (tr1.github_authenticity or 0) | round | int }},
+            {{ ((tr1.identity or {}).get('score', 0) if tr1 else 0)| round | int }},
+        {{ ((tr1.certificates or {}).get('score', 0) if tr1 else 0) | round | int }}
+            ],
+        borderColor: '#4da6ff',
+            backgroundColor: 'rgba(77,166,255,0.1)',
+                pointBackgroundColor: '#4da6ff',
+        }, {
+            label: '{{ cand2.full_name or "Candidate B" }}',
+                data: [
+                    {{ (cand2.resume_score or 0) | round | int }},
+        {{ (fs2.combined_score or 0) | round | int }},
+        {{ (tr2.overall_score or 0) | round | int }},
+        {{ (tr2.github_authenticity or 0) | round | int }},
+        {{ ((tr2.identity or {}).get('score', 0) if tr2 else 0) | round | int }},
+        {{ ((tr2.certificates or {}).get('score', 0) if tr2 else 0) | round | int }}
+            ],
+        borderColor: '#a78bfa',
+            backgroundColor: 'rgba(167,139,250,0.1)',
+                pointBackgroundColor: '#a78bfa',
+        }]
+    },
+        options: {
+            responsive: true,
+                plugins: { legend: { labels: { color: '#94a3b8' } } },
+            scales: { r: { beginAtZero: true, max: 100, grid: { color: 'rgba(255,255,255,0.08)' }, pointLabels: { color: '#94a3b8', font: { size: 11 } }, ticks: { color: '#94a3b8', backdropColor: 'transparent' } } }
+        }
+});
+
+        // Bar Chart
+        const barCtx = document.getElementById('barChart').getContext('2d');
+        new Chart(barCtx, {
+            type: 'bar',
+            data: {
+                labels: ['Resume', 'Interview', 'Trust', 'GitHub', 'Hiring Conf.'],
+                datasets: [{
+                    label: '{{ cand1.full_name or "A" }}',
+                    data: [{{ (cand1.resume_score or 0) | round | int }}, {{ (fs1.combined_score or 0) | round | int }}, {{ (tr1.overall_score or 0) | round | int }}, {{ (tr1.github_authenticity or 0) | round | int }}, {{ hc1 }}],
+            backgroundColor: 'rgba(77,166,255,0.7)',
+            borderRadius: 6,
+        }, {
+                label: '{{ cand2.full_name or "B" }}',
+                data: [{{ (cand2.resume_score or 0) | round | int }}, {{ (fs2.combined_score or 0) | round | int }}, {{ (tr2.overall_score or 0) | round | int }}, {{ (tr2.github_authenticity or 0) | round | int }}, {{ hc2 }}],
+            backgroundColor: 'rgba(167,139,250,0.7)',
+            borderRadius: 6,
+        }]
+    },
+            options: {
+            responsive: true,
+            plugins: { legend: { labels: { color: '#94a3b8' } } },
+            scales: {
+                x: { ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } },
+                y: { beginAtZero: true, max: 100, ticks: { color: '#94a3b8' }, grid: { color: 'rgba(255,255,255,0.05)' } }
+            }
+        }
+});
+    </script>
+</body>
+
+</html>

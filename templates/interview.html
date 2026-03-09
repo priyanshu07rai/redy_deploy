@@ -1,0 +1,722 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Session — AI Hiring Platform</title>
+    <meta name="description" content="AI-monitored interview session with integrity monitoring and behavioral analysis">
+    <link rel="stylesheet" href="{{ url_for('static', filename='interview.css') }}">
+    <!-- face-api.js for client-side face detection -->
+    <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+</head>
+
+<body class="interview-body">
+
+    <!-- ═══ Header ═══════════════════════════════════════════════════════ -->
+    <header class="interview-header">
+        <div class="header-brand">
+            <div class="icon">🎯</div>
+            <span>Interview Session</span>
+        </div>
+        <div class="header-status">
+            <div class="recording-indicator" id="recordingIndicator">
+                <div class="recording-dot"></div>
+                <span>RECORDING</span>
+            </div>
+            <div class="timer-display" id="timer">00:00</div>
+        </div>
+    </header>
+
+    <!-- ═══ Main Content ═════════════════════════════════════════════════ -->
+    <div class="interview-container">
+
+        <!-- Video Panel -->
+        <div class="video-panel">
+            <div class="video-wrapper">
+                <video id="webcamVideo" autoplay muted playsinline></video>
+                <canvas id="faceCanvas" class="face-canvas"></canvas>
+                <div class="video-overlay" id="videoOverlay">
+                    <div class="video-overlay-text">
+                        <div class="icon">📹</div>
+                        <h3>Camera Preview</h3>
+                        <p>Allow camera access to begin</p>
+                    </div>
+                </div>
+            </div>
+            <!-- Interview Questions Overlay (Moved out of video frame) -->
+            <div class="questions-overlay" id="questionsOverlay" style="display: none;">
+                <div class="question-card">
+                    <span class="q-badge">Current Question</span>
+                    <h2 id="currentQuestionText">Loading questions...</h2>
+                    <div class="q-navigation">
+                        <span id="qProgress">1 / 3</span>
+                        <button onclick="nextQuestion()" class="btn-q-next">Next Question →</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Mic Visualizer -->
+            <div class="mic-visualizer">
+                <div class="mic-label">🎙 Microphone Level</div>
+                <div class="mic-bars" id="micBars"></div>
+            </div>
+
+            <!-- Controls -->
+            <div class="controls-bar">
+                <button class="btn-interview btn-start" id="btnStart" onclick="startRecording()">
+                    ▶ Start Interview
+                </button>
+                <button class="btn-interview btn-stop" id="btnStop" onclick="stopRecording()">
+                    ⏹ Stop Recording
+                </button>
+                <button class="btn-interview btn-submit" id="btnSubmit" onclick="submitInterview()">
+                    📤 Submit Interview
+                </button>
+            </div>
+        </div>
+
+        <!-- Side Panel -->
+        <div class="side-panel">
+
+            <!-- Anomaly Monitor -->
+            <div class="panel-card">
+                <h3>🛡 Integrity Monitor</h3>
+                <div class="anomaly-grid">
+                    <div class="anomaly-item" id="anomTab">
+                        <span class="anomaly-label">🔀 Tab Switches</span>
+                        <span class="anomaly-count" id="countTab">0</span>
+                    </div>
+                    <div class="anomaly-item" id="anomBlur">
+                        <span class="anomaly-label">👁 Window Blur</span>
+                        <span class="anomaly-count" id="countBlur">0</span>
+                    </div>
+                    <div class="anomaly-item" id="anomFace">
+                        <span class="anomaly-label">😶 No Face (sec)</span>
+                        <span class="anomaly-count" id="countNoFace">0</span>
+                    </div>
+                    <div class="anomaly-item" id="anomMultiFace">
+                        <span class="anomaly-label">👥 Multiple Faces</span>
+                        <span class="anomaly-count" id="countMultiFace">0</span>
+                    </div>
+
+                    <div class="anomaly-item" id="anomCopy">
+                        <span class="anomaly-label">📋 Copy Attempts</span>
+                        <span class="anomaly-count" id="countCopy">0</span>
+                    </div>
+                    <div class="anomaly-item" id="anomFullscreen">
+                        <span class="anomaly-label">🖥 Fullscreen Exits</span>
+                        <span class="anomaly-count" id="countFullscreen">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Instructions -->
+            <div class="panel-card">
+                <h3>📋 Instructions</h3>
+                <ul class="instructions-list">
+                    <li>Stay in this browser tab during the interview</li>
+                    <li>Keep your face visible in the camera at all times</li>
+
+                    <li>Do not copy/paste or switch windows</li>
+                    <li>Stay in fullscreen mode when prompted</li>
+                    <li>Answer naturally and completely</li>
+                </ul>
+            </div>
+
+            <!-- Transcript Preview -->
+            <div class="panel-card" id="transcriptCard" style="display: none;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">📝 Live Transcript</h3>
+                    <span class="stt-badge">Real-time STT</span>
+                </div>
+                <div class="transcript-box" id="liveTranscript">Waiting for speech...</div>
+                <p style="font-size: 11px; color: #64748b; margin-top: 8px;">Captured via Web Speech API for evaluation.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Submit Overlay -->
+    <div class="submit-overlay" id="submitOverlay">
+        <div class="submit-card">
+            <div class="submit-spinner"></div>
+            <h3>Processing Interview</h3>
+            <p>Analyzing your session...</p>
+            <div class="pipeline-steps">
+                <div class="pipeline-step" id="step1">
+                    <span class="pipeline-step-icon">⏳</span>
+                    <span>Uploading video</span>
+                </div>
+                <div class="pipeline-step" id="step2">
+                    <span class="pipeline-step-icon">⏳</span>
+                    <span>Computing integrity index</span>
+                </div>
+                <div class="pipeline-step" id="step3">
+                    <span class="pipeline-step-icon">⏳</span>
+                    <span>Analyzing transcript</span>
+                </div>
+                <div class="pipeline-step" id="step4">
+                    <span class="pipeline-step-icon">⏳</span>
+                    <span>AI evaluation</span>
+                </div>
+                <div class="pipeline-step" id="step5">
+                    <span class="pipeline-step-icon">⏳</span>
+                    <span>Generating tamper hash</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Status Toast -->
+    <div class="status-toast" id="statusToast"></div>
+
+    <!-- ═══════════════════════════════════════════════════════════════════
+         JAVASCRIPT — Interview Engine Client
+         ═══════════════════════════════════════════════════════════════════ -->
+    <script>
+        // ─── State ──────────────────────────────────────────────────────────
+        const anomalyFlags = {
+            tab_switches: 0,
+            window_blur: 0,
+            no_face_seconds: 0,
+            multiple_faces: 0,
+            copy_attempts: 0,
+            fullscreen_exits: 0
+        };
+
+        let mediaRecorder = null;
+        let recordedChunks = [];
+        let mediaStream = null;
+        let isRecording = false;
+        let timerInterval = null;
+        let timerSeconds = 0;
+        let faceDetectionInterval = null;
+        let micVisualizerInterval = null;
+        let wasFullscreen = false;
+        let currentQuestionIndex = 0;
+        const interviewQuestions = [
+            "Tell us about a complex technical challenge you solved recently. How did you approach it?",
+            "How do you ensure the quality and reliability of your code during development?",
+            "Describe a situation where you had to collaborate with a difficult stakeholder. What was the outcome?"
+        ];
+
+        // ─── Audio Monitoring State (Production Grade) ─────────────────────
+        let audioContext = null;
+        let analyserNode = null;
+        let microphone = null;
+        let dataArray = null;
+        let currentRms = 0;
+        let noiseFloor = 0.005; // Adaptive noise floor
+        let transcript = ""; // Dedicated transcript accumulation
+        let recognition = null;
+
+        // ─── DOM Elements ───────────────────────────────────────────────────
+        const video = document.getElementById('webcamVideo');
+        const canvas = document.getElementById('faceCanvas');
+        const ctx = canvas.getContext('2d');
+        const btnStart = document.getElementById('btnStart');
+        const btnStop = document.getElementById('btnStop');
+        const btnSubmit = document.getElementById('btnSubmit');
+        const recordingIndicator = document.getElementById('recordingIndicator');
+        const videoOverlay = document.getElementById('videoOverlay');
+        const timerEl = document.getElementById('timer');
+        const micBarsContainer = document.getElementById('micBars');
+
+        // Create mic bars
+        for (let i = 0; i < 40; i++) {
+            const bar = document.createElement('div');
+            bar.className = 'mic-bar';
+            micBarsContainer.appendChild(bar);
+        }
+        const micBars = micBarsContainer.querySelectorAll('.mic-bar');
+
+        // ─── Initialize Camera Preview Only ─────────────────────────────────
+        async function initMedia() {
+            try {
+                mediaStream = await navigator.mediaDevices.getUserMedia({
+                    video: { width: 1280, height: 720, facingMode: 'user' },
+                    audio: true
+                });
+                video.srcObject = mediaStream;
+                videoOverlay.classList.add('hidden');
+                showToast('Camera and microphone ready', 'success');
+
+                // Init face detection
+                initFaceDetection();
+
+            } catch (err) {
+                console.error('Media access error:', err);
+                showToast('Camera/microphone access denied', 'error');
+            }
+        }
+
+        // ─── Production Grade Audio Monitoring ──────────────────────────────
+        async function startAudioMonitoring() {
+            try {
+                if (!mediaStream) return;
+
+                audioContext = new (window.AudioContext || window.webkitAudioContext)();
+
+                // IMPORTANT: resume after user interaction
+                if (audioContext.state === "suspended") {
+                    await audioContext.resume();
+                }
+
+                analyserNode = audioContext.createAnalyser();
+                analyserNode.fftSize = 2048;
+
+                microphone = audioContext.createMediaStreamSource(mediaStream);
+                microphone.connect(analyserNode);
+
+                dataArray = new Uint8Array(analyserNode.fftSize);
+
+                monitorAudio();
+                console.log("🎤 Audio monitoring started");
+
+                // Start mic visualizer
+                micVisualizerInterval = setInterval(updateMicVisualizer, 50);
+
+
+
+            } catch (err) {
+                console.error("Mic monitor error:", err);
+            }
+        }
+
+        function monitorAudio() {
+            if (!analyserNode) return; // Removed isRecording check to keep monitor alive
+
+            analyserNode.getByteTimeDomainData(dataArray);
+
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+                let normalized = (dataArray[i] - 128) / 128;
+                sum += normalized * normalized;
+            }
+
+            currentRms = Math.sqrt(sum / dataArray.length);
+
+            // Only log if recording to avoid spamming console before start
+            if (isRecording && Math.random() < 0.1) { // Log sampled 10% for performance
+                console.log(`RMS: ${currentRms.toFixed(4)} | Floor: ${noiseFloor.toFixed(4)}`);
+            }
+
+            requestAnimationFrame(monitorAudio);
+        }
+
+        function updateMicVisualizer() {
+            if (!analyserNode) return;
+            // Visualizer can still use frequency data for aesthetics
+            const freqData = new Uint8Array(analyserNode.frequencyBinCount);
+            analyserNode.getByteFrequencyData(freqData);
+
+            const step = Math.floor(freqData.length / micBars.length);
+            for (let i = 0; i < micBars.length; i++) {
+                const value = freqData[i * step] || 0;
+                const height = Math.max(4, (value / 255) * 32);
+                micBars[i].style.height = height + 'px';
+                micBars[i].style.opacity = 0.3 + (value / 255) * 0.7;
+            }
+        }
+
+        // ─── Face Detection (face-api.js) ───────────────────────────────────
+        async function initFaceDetection() {
+            try {
+                const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.12/model/';
+                await faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL);
+                showToast('Face detection loaded', 'info');
+            } catch (err) {
+                console.warn('Face detection model load failed:', err);
+                showToast('Face detection unavailable — continuing without', 'info');
+            }
+        }
+
+        async function detectFaces() {
+            if (!faceapi || !faceapi.nets.tinyFaceDetector.params) return;
+
+            try {
+                const detections = await faceapi.detectAllFaces(
+                    video,
+                    new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.5 })
+                );
+
+                // Draw detection boxes
+                canvas.width = video.videoWidth;
+                canvas.height = video.videoHeight;
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+                if (detections.length === 0) {
+                    // No face detected
+                    anomalyFlags.no_face_seconds += 3;
+                    updateAnomalyUI('countNoFace', anomalyFlags.no_face_seconds);
+                } else if (detections.length > 1) {
+                    // Multiple faces
+                    anomalyFlags.multiple_faces++;
+                    updateAnomalyUI('countMultiFace', anomalyFlags.multiple_faces);
+                }
+
+                // Draw face boxes
+                detections.forEach(det => {
+                    const box = det.box;
+                    ctx.strokeStyle = detections.length === 1 ? '#10b981' : '#f43f5e';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(box.x, box.y, box.width, box.height);
+                });
+
+            } catch (err) {
+                console.warn('Face detection error:', err);
+            }
+        }
+
+        // ─── Tab / Blur / Copy / Fullscreen Detection ───────────────────────
+        document.addEventListener('visibilitychange', () => {
+            if (isRecording && document.hidden) {
+                anomalyFlags.tab_switches++;
+                updateAnomalyUI('countTab', anomalyFlags.tab_switches);
+            }
+        });
+
+        window.addEventListener('blur', () => {
+            if (isRecording) {
+                anomalyFlags.window_blur++;
+                updateAnomalyUI('countBlur', anomalyFlags.window_blur);
+            }
+        });
+
+        document.addEventListener('copy', (e) => {
+            if (isRecording) {
+                e.preventDefault();
+                anomalyFlags.copy_attempts++;
+                updateAnomalyUI('countCopy', anomalyFlags.copy_attempts);
+                showToast('Copy is disabled during interview', 'error');
+            }
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            if (isRecording && wasFullscreen && !document.fullscreenElement) {
+                anomalyFlags.fullscreen_exits++;
+                updateAnomalyUI('countFullscreen', anomalyFlags.fullscreen_exits);
+            }
+            wasFullscreen = !!document.fullscreenElement;
+        });
+
+        // DevTools detection (heuristic)
+        let devtoolsOpen = false;
+        const devtoolsThreshold = 160;
+        setInterval(() => {
+            if (isRecording) {
+                const widthDiff = window.outerWidth - window.innerWidth > devtoolsThreshold;
+                const heightDiff = window.outerHeight - window.innerHeight > devtoolsThreshold;
+                if (widthDiff || heightDiff) {
+                    if (!devtoolsOpen) {
+                        devtoolsOpen = true;
+                        showToast('⚠ DevTools detected — this is logged', 'error');
+                    }
+                } else {
+                    devtoolsOpen = false;
+                }
+            }
+        }, 3000);
+
+        // ─── Production Grade Speech Recognition Loop ──────────────────────
+        function startSpeechRecognition() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) {
+                console.warn('Speech recognition not supported');
+                showToast('Speech Recognition not supported in this browser.', 'error');
+                return;
+            }
+
+            recognition = new SpeechRecognition();
+            recognition.continuous = true;
+            recognition.interimResults = true;
+            recognition.lang = 'en-US';
+
+            recognition.onstart = () => {
+                console.log("🎙 Speech recognition started");
+            };
+
+            recognition.onresult = (event) => {
+                let interimTranscript = '';
+                for (let i = event.resultIndex; i < event.results.length; i++) {
+                    if (event.results[i].isFinal) {
+                        transcript += event.results[i][0].transcript + " ";
+                    } else {
+                        interimTranscript += event.results[i][0].transcript;
+                    }
+                }
+                console.log("Transcript Updated:", transcript);
+
+                const transcriptEl = document.getElementById('liveTranscript');
+                if (transcriptEl) {
+                    transcriptEl.innerHTML = `<span style="color:#e2e8f0">${transcript}</span><span style="color:#94a3b8">${interimTranscript}</span>`;
+                    transcriptEl.scrollTop = transcriptEl.scrollHeight;
+                }
+            };
+
+            recognition.onerror = (event) => {
+                console.warn("Speech recognition error:", event.error);
+                if (event.error === "no-speech") {
+                    // Restart automatically by stopping (onend handles restart)
+                    recognition.stop();
+                }
+            };
+
+            recognition.onend = () => {
+                if (isRecording) {
+                    console.log("Recognition ended — restarting loop...");
+                    try { recognition.start(); } catch (e) {
+                        console.error("Restart failed:", e);
+                    }
+                }
+            };
+
+            try {
+                recognition.start();
+            } catch (e) {
+                console.error("Initial start failed:", e);
+            }
+        }
+
+        // ─── Question Navigation ────────────────────────────────────────────
+        function updateQuestionUI() {
+            const qText = document.getElementById('currentQuestionText');
+            const qProg = document.getElementById('qProgress');
+            qText.textContent = interviewQuestions[currentQuestionIndex];
+            qProg.textContent = `${currentQuestionIndex + 1} / ${interviewQuestions.length}`;
+
+            // Highlight effect
+            qText.style.animation = 'none';
+            void qText.offsetWidth; // trigger reflow
+            qText.style.animation = 'fadeInUp 0.5s ease-out';
+        }
+
+        function nextQuestion() {
+            if (currentQuestionIndex < interviewQuestions.length - 1) {
+                currentQuestionIndex++;
+                updateQuestionUI();
+            } else {
+                showToast('Final question — summarize your thoughts', 'info');
+                document.getElementById('questionsOverlay').classList.add('final-step');
+            }
+        }
+
+        // ─── Recording Controls ─────────────────────────────────────────────
+        async function startRecording() {
+            if (!mediaStream) {
+                showToast('Please allow camera access first', 'error');
+                return;
+            }
+
+            // Start Audio Monitoring (Deferred until click to comply with browser policy)
+            await startAudioMonitoring();
+
+            // Request fullscreen
+            try {
+                document.documentElement.requestFullscreen().catch(() => { });
+                wasFullscreen = true;
+            } catch (e) { }
+
+            // Start MediaRecorder
+            recordedChunks = [];
+            const options = { mimeType: 'video/webm;codecs=vp9,opus' };
+            try {
+                mediaRecorder = new MediaRecorder(mediaStream, options);
+            } catch (e) {
+                mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'video/webm' });
+            }
+
+            mediaRecorder.ondataavailable = (e) => {
+                if (e.data.size > 0) recordedChunks.push(e.data);
+            };
+
+            isRecording = true; // Set flag BEFORE starting audio monitoring/recorder
+            mediaRecorder.start(1000);
+
+            // Update UI
+            btnStart.style.display = 'none';
+            btnStop.style.display = 'inline-flex';
+            recordingIndicator.classList.add('active');
+
+            // Start timer
+            timerSeconds = 0;
+            timerInterval = setInterval(() => {
+                timerSeconds++;
+                const mins = Math.floor(timerSeconds / 60).toString().padStart(2, '0');
+                const secs = (timerSeconds % 60).toString().padStart(2, '0');
+                timerEl.textContent = `${mins}:${secs}`;
+            }, 1000);
+
+            // Start face detection (every 3 seconds)
+            faceDetectionInterval = setInterval(detectFaces, 3000);
+
+            // Start speech recognition loop
+            startSpeechRecognition();
+            if (recognition) {
+                document.getElementById('transcriptCard').style.display = 'block';
+            }
+
+            // Show questions
+            document.getElementById('questionsOverlay').style.display = 'flex';
+            currentQuestionIndex = 0;
+            updateQuestionUI();
+
+            showToast('Recording started — interview in progress', 'success');
+        }
+
+        function stopRecording() {
+            if (!mediaRecorder || !isRecording) return;
+
+            isRecording = false;
+            mediaRecorder.stop();
+
+            // Stop timers
+            clearInterval(timerInterval);
+            clearInterval(faceDetectionInterval);
+            clearInterval(micVisualizerInterval);
+
+            // Stop speech recognition
+            if (recognition) {
+                try { recognition.stop(); } catch (e) { }
+            }
+
+            // Exit fullscreen
+            if (document.fullscreenElement) {
+                document.exitFullscreen().catch(() => { });
+            }
+
+            // Update UI
+            btnStop.style.display = 'none';
+            btnSubmit.style.display = 'inline-flex';
+            recordingIndicator.classList.remove('active');
+
+            // Clear face canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            showToast('Recording stopped — ready to submit', 'info');
+        }
+
+        // ─── Submit Interview ───────────────────────────────────────────────
+        async function submitInterview() {
+            if (recordedChunks.length === 0) {
+                showToast('No recording to submit', 'error');
+                return;
+            }
+
+            // PRODUCTION GRADE: Validate speech capture
+            if (!transcript.trim()) {
+                alert("No speech detected. Please ensure your microphone is working and speak during the interview.");
+                return;
+            }
+
+            btnSubmit.disabled = true;
+
+            // Show processing overlay
+            const overlay = document.getElementById('submitOverlay');
+            overlay.classList.add('active');
+
+            // Animate pipeline steps
+            animateStep('step1', 'active');
+
+            try {
+                const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                const formData = new FormData();
+                formData.append('video', blob, 'interview.webm');
+                formData.append('anomaly_flags', JSON.stringify(anomalyFlags));
+                formData.append('transcript', transcript);
+                formData.append('questions', JSON.stringify(interviewQuestions));
+
+                animateStep('step1', 'done');
+                animateStep('step2', 'active');
+
+                // Submit to backend
+                const response = await fetch('/interview/submit', {
+                    method: 'POST',
+                    body: formData,
+                });
+
+                animateStep('step2', 'done');
+                animateStep('step3', 'active');
+
+                await new Promise(r => setTimeout(r, 500));
+                animateStep('step3', 'done');
+                animateStep('step4', 'active');
+
+                await new Promise(r => setTimeout(r, 500));
+                animateStep('step4', 'done');
+                animateStep('step5', 'active');
+
+                const result = await response.json();
+
+                animateStep('step5', 'done');
+
+                if (result.success) {
+                    showToast('Interview submitted successfully!', 'success');
+                    setTimeout(() => {
+                        window.location.href = result.redirect;
+                    }, 1500);
+                } else {
+                    throw new Error(result.error || 'Submission failed');
+                }
+
+            } catch (err) {
+                console.error('Submit error:', err);
+                overlay.classList.remove('active');
+                btnSubmit.disabled = false;
+                showToast('Submission failed: ' + err.message, 'error');
+            }
+        }
+
+        // ─── UI Helpers ─────────────────────────────────────────────────────
+        function updateAnomalyUI(elementId, value) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            el.textContent = value;
+
+            // Color coding
+            const parent = el.closest('.anomaly-item');
+            if (value > 0) {
+                parent.classList.add('flagged');
+                el.classList.remove('warn', 'danger');
+                if (value >= 5) {
+                    el.classList.add('danger');
+                } else if (value >= 2) {
+                    el.classList.add('warn');
+                }
+            }
+        }
+
+        function showToast(message, type = 'info') {
+            const toast = document.getElementById('statusToast');
+            toast.textContent = message;
+            toast.className = 'status-toast ' + type + ' visible';
+            setTimeout(() => toast.classList.remove('visible'), 3000);
+        }
+
+        function animateStep(stepId, state) {
+            const el = document.getElementById(stepId);
+            if (!el) return;
+            const icon = el.querySelector('.pipeline-step-icon');
+            el.classList.remove('active', 'done');
+            el.classList.add(state);
+            if (state === 'active') icon.textContent = '⏳';
+            else if (state === 'done') icon.textContent = '✅';
+        }
+
+        // ─── Initialize ─────────────────────────────────────────────────────
+        window.addEventListener('DOMContentLoaded', () => {
+            initMedia();
+        });
+
+        // Cleanup on page leave
+        window.addEventListener('beforeunload', () => {
+            if (mediaStream) {
+                mediaStream.getTracks().forEach(t => t.stop());
+            }
+            if (audioContext) audioContext.close();
+        });
+    </script>
+</body>
+
+</html>

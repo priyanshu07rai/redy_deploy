@@ -1,0 +1,416 @@
+{% extends 'base.html' %}
+
+{% block title %}Resume Intelligence — Verify & Confirm{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='confirm.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    /* Override base page-container for dark full-page layout */
+    .page-container {
+        max-width: 100%;
+        padding: 0;
+        background: transparent;
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .navbar {
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# ── Pull non-score values ──────────────────────────────────── #}
+{% set parsing_conf = data.parsed.parsing_confidence|default(0) %}
+
+{# ── Motion animated background ─────────────────────────────── #}
+<div class="ri-bg">
+    <div class="ri-bg-orb ri-bg-orb-1"></div>
+    <div class="ri-bg-orb ri-bg-orb-2"></div>
+    <div class="ri-bg-orb ri-bg-orb-3"></div>
+</div>
+
+{# ── MAIN CONTAINER ─────────────────────────────────────────── #}
+<div class="ri-page">
+
+    {# ── Flashed messages ────────────────────────────────────── #}
+    {% for message in get_flashed_messages() %}
+    <div class="ri-flash">⚠ {{ message }}</div>
+    {% endfor %}
+
+    {# ────────────────────────────────────────────────────────── #}
+    {# SECTION 1 — VERIFY & CONFIRM HEADER #}
+    {# ────────────────────────────────────────────────────────── #}
+    <section class="ri-hero" data-anim="fade">
+        <div class="ri-hero-inner" style="text-align:center;">
+            <div style="font-size:48px;margin-bottom:12px;">📋</div>
+            <h1 style="font-size:24px;font-weight:700;color:#f1f5f9;margin-bottom:8px;">Verify & Confirm Your Resume
+            </h1>
+            <p style="color:#94a3b8;font-size:14px;margin-bottom:16px;">Review the extracted data below and make
+                corrections before locking.</p>
+            <div class="ri-hero-meta">
+                <span class="ri-badge ri-badge-ok"
+                    style="background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.3);">
+                    🏁 Step 2 of 2
+                </span>
+                <span class="ri-badge"
+                    style="background: rgba(59, 130, 246, 0.1); color: #60a5fa; border-color: rgba(59, 130, 246, 0.3);">
+                    🏢 Target: {{ company_name }}
+                </span>
+                <span class="ri-badge ri-badge-conf">
+                    🎯 Parsing Confidence <b>{{ parsing_conf }}%</b>
+                </span>
+                <span class="ri-badge"
+                    style="background:rgba(99,102,241,0.12);border:1px solid rgba(99,102,241,0.3);color:#a5b4fc;">
+                    📄 Version {{ data.version }}
+                </span>
+            </div>
+        </div>
+    </section>
+
+    <form method="post" id="confirmForm">
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 3 — IDENTITY #}
+        {# ────────────────────────────────────────────────────────── #}
+        <section class="ri-card" data-anim="fade">
+            <div class="ri-card-head">
+                <h2>👤 Identity</h2>
+            </div>
+            <div class="ri-grid-2">
+                <label class="ri-field">
+                    <span class="ri-field-label">Full Name</span>
+                    <input type="text" name="full_name" class="ri-input" value="{{ data.parsed.full_name or '' }}"
+                        placeholder="Enter your full name">
+                </label>
+                <label class="ri-field">
+                    <span class="ri-field-label">Email</span>
+                    <input type="email" name="email" class="ri-input" value="{{ data.parsed.email or '' }}"
+                        placeholder="Enter email">
+                </label>
+                <label class="ri-field">
+                    <span class="ri-field-label">Phone</span>
+                    <input type="text" name="phone" class="ri-input" value="{{ data.parsed.phone or '' }}"
+                        placeholder="Enter phone number">
+                </label>
+                <label class="ri-field">
+                    <span class="ri-field-label">Location</span>
+                    <input type="text" name="location" class="ri-input" value="{{ data.parsed.location or '' }}"
+                        placeholder="City, State or Country">
+                    {% if not data.parsed.location %}
+                    <span class="ri-field-warn">⚠ Location not detected</span>
+                    {% endif %}
+                </label>
+            </div>
+        </section>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 4 — LINKS #}
+        {# ────────────────────────────────────────────────────────── #}
+        <section class="ri-card" data-anim="fade">
+            <div class="ri-card-head">
+                <h2>🔗 Links</h2>
+            </div>
+            <div class="ri-grid-2">
+                <label class="ri-field">
+                    <span class="ri-field-label">GitHub URL</span>
+                    <input type="url" name="github_url" class="ri-input" value="{{ data.parsed.github_url or '' }}"
+                        placeholder="https://github.com/username">
+                    {% if not data.parsed.github_username %}
+                    <span class="ri-field-warn">⚠ GitHub not linked — score will be 0</span>
+                    {% endif %}
+                </label>
+                <label class="ri-field">
+                    <span class="ri-field-label">LinkedIn URL</span>
+                    <input type="url" name="linkedin_url" class="ri-input" value="{{ data.parsed.linkedin_url or '' }}"
+                        placeholder="https://linkedin.com/in/username">
+                </label>
+                <label class="ri-field ri-field-full">
+                    <span class="ri-field-label">Portfolio URL</span>
+                    <input type="url" name="portfolio_url" class="ri-input"
+                        value="{{ data.parsed.portfolio_url or '' }}" placeholder="https://your-portfolio.com">
+                </label>
+            </div>
+        </section>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 5 — SKILLS (tag cloud) #}
+        {# ────────────────────────────────────────────────────────── #}
+        <section class="ri-card" data-anim="fade">
+            <div class="ri-card-head">
+                <h2>🛠 Skills</h2>
+                <span class="ri-card-badge ri-badge-count">{{ data.parsed.skills|length }} detected</span>
+            </div>
+            <input type="hidden" name="skills" id="skillsHidden" value="{{ data.parsed.skills | join(', ') }}">
+            <div class="ri-tags-wrap" id="skillsBubbles">
+                {% for skill in data.parsed.skills %}
+                {% if skill.strip() %}
+                <span class="ri-tag">
+                    {{ skill.strip() }}
+                    <button type="button" class="ri-tag-x" aria-label="Remove">&times;</button>
+                </span>
+                {% endif %}
+                {% endfor %}
+                <input type="text" class="ri-tag-input" id="skillInput" placeholder="Type a skill & press Enter">
+            </div>
+        </section>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 6 — EXPERIENCE & EDUCATION (side by side) #}
+        {# ────────────────────────────────────────────────────────── #}
+        <div class="ri-split" data-anim="fade">
+            {# LEFT — Experience #}
+            <section class="ri-card ri-card-half">
+                <div class="ri-card-head">
+                    <h2>💼 Experience</h2>
+                </div>
+                <div class="ri-grid-2">
+                    <label class="ri-field">
+                        <span class="ri-field-label">Years</span>
+                        <input type="number" name="years_experience" class="ri-input"
+                            value="{{ data.parsed.years_experience or 0 }}" min="0" max="50" step="0.5">
+                    </label>
+                    <label class="ri-field">
+                        <span class="ri-field-label">Job Titles</span>
+                        <input type="text" name="job_titles" class="ri-input"
+                            value="{{ data.parsed.job_titles | join(', ') }}"
+                            placeholder="Software Engineer, Intern...">
+                    </label>
+                    <label class="ri-field ri-field-full">
+                        <span class="ri-field-label">Companies</span>
+                        <input type="text" name="companies" class="ri-input"
+                            value="{{ data.parsed.companies | join(', ') }}" placeholder="Google, Microsoft...">
+                    </label>
+                </div>
+            </section>
+            {# RIGHT — Education #}
+            <section class="ri-card ri-card-half">
+                <div class="ri-card-head">
+                    <h2>🎓 Education</h2>
+                </div>
+                <div class="ri-grid-2">
+                    <label class="ri-field">
+                        <span class="ri-field-label">Degree</span>
+                        <input type="text" name="degree" class="ri-input" value="{{ data.parsed.degree or '' }}"
+                            placeholder="B.Tech, M.S., MBA...">
+                    </label>
+                    <label class="ri-field">
+                        <span class="ri-field-label">University</span>
+                        <input type="text" name="university" class="ri-input" value="{{ data.parsed.university or '' }}"
+                            placeholder="University name">
+                    </label>
+                    <label class="ri-field">
+                        <span class="ri-field-label">Graduation Year</span>
+                        <input type="number" name="graduation_year" class="ri-input"
+                            value="{{ data.parsed.graduation_year or '' }}" placeholder="2024" min="1990" max="2035">
+                    </label>
+                    <label class="ri-field">
+                        <span class="ri-field-label">GPA / Percentage</span>
+                        <input type="text" name="gpa" class="ri-input" value="{{ data.parsed.gpa or '' }}"
+                            placeholder="8.5/10 or 85%">
+                    </label>
+                </div>
+            </section>
+        </div>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 7 — CERTIFICATIONS #}
+        {# ────────────────────────────────────────────────────────── #}
+        <section class="ri-card" data-anim="fade">
+            <div class="ri-card-head">
+                <h2>📜 Certifications</h2>
+            </div>
+            <textarea name="certifications" class="ri-textarea" rows="3"
+                placeholder="AWS Solutions Architect&#10;Google Cloud Professional...">{{ data.parsed.certifications | join('\n') }}</textarea>
+        </section>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 8 — PROJECTS #}
+        {# ────────────────────────────────────────────────────────── #}
+        <section class="ri-card" data-anim="fade">
+            <div class="ri-card-head">
+                <h2>🗂 Projects</h2>
+            </div>
+            <textarea name="projects" class="ri-textarea" rows="3"
+                placeholder="AI Chat Platform&#10;E-commerce Dashboard...">{{ data.parsed.projects | join('\n') }}</textarea>
+        </section>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 9 — LANGUAGES, INTERESTS, ACHIEVEMENTS #}
+        {# ────────────────────────────────────────────────────────── #}
+        <section class="ri-card" data-anim="fade">
+            <div class="ri-card-head">
+                <h2>🌐 Languages, Interests & Achievements</h2>
+            </div>
+            <div class="ri-grid-2">
+                <label class="ri-field">
+                    <span class="ri-field-label">Languages <small>(comma-separated)</small></span>
+                    <input type="text" name="languages" class="ri-input"
+                        value="{{ data.parsed.languages | join(', ') }}" placeholder="English, Hindi, Spanish...">
+                </label>
+                <label class="ri-field">
+                    <span class="ri-field-label">Interests <small>(comma-separated)</small></span>
+                    <input type="text" name="interests" class="ri-input"
+                        value="{{ data.parsed.interests | join(', ') }}"
+                        placeholder="Open Source, Competitive Programming...">
+                </label>
+                <label class="ri-field ri-field-full">
+                    <span class="ri-field-label">Achievements <small>(one per line)</small></span>
+                    <textarea name="achievements" class="ri-textarea" rows="2"
+                        placeholder="Won XYZ Hackathon&#10;Published paper in...">{{ data.parsed.achievements | join('\n') }}</textarea>
+                </label>
+            </div>
+        </section>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 10 — AI SUMMARY (premium block) #}
+        {# ────────────────────────────────────────────────────────── #}
+        <section class="ri-card ri-card-ai" data-anim="fade">
+            <div class="ri-card-head">
+                <h2>🤖 AI-Generated Summary</h2>
+                <span class="ri-card-badge ri-badge-ai">AI Generated — Review Before Confirming</span>
+            </div>
+            <textarea name="ai_summary" class="ri-textarea ri-textarea-ai" rows="5"
+                placeholder="AI-generated professional summary will appear here...">{{ data.ai_summary or data.parsed.summary or '' }}</textarea>
+        </section>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# SECTION 11 — AUDIT TRANSPARENCY (collapsible) #}
+        {# ────────────────────────────────────────────────────────── #}
+        <section class="ri-card ri-card-audit" data-anim="fade">
+            <button type="button" class="ri-audit-toggle" id="auditToggle" aria-expanded="false">
+                🔍 Extraction Transparency
+                <svg class="ri-chev" viewBox="0 0 24 24">
+                    <path d="M6 9l6 6 6-6" />
+                </svg>
+            </button>
+            <div class="ri-audit-body" id="auditBody">
+                <div class="ri-grid-2">
+                    <div class="ri-audit-item">
+                        <span class="ri-audit-label">Resume Hash</span>
+                        <span class="ri-audit-val mono">{{ data.file_hash[:24] }}...</span>
+                    </div>
+                    <div class="ri-audit-item">
+                        <span class="ri-audit-label">Parsing Confidence</span>
+                        <span class="ri-audit-val">{{ parsing_conf }}%</span>
+                    </div>
+                    <div class="ri-audit-item">
+                        <span class="ri-audit-label">Sections Detected</span>
+                        <span class="ri-audit-val">{{ data.parsed.sections_detected | join(', ') }}</span>
+                    </div>
+                    <div class="ri-audit-item">
+                        <span class="ri-audit-label">Resume Version</span>
+                        <span class="ri-audit-val">v{{ data.version }}</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        {# ────────────────────────────────────────────────────────── #}
+        {# STICKY BOTTOM ACTION BAR #}
+        {# ────────────────────────────────────────────────────────── #}
+        <div class="ri-action-spacer"></div>
+        <div class="ri-action-bar">
+            <div class="ri-action-inner">
+                <a href="#" onclick="document.getElementById('cancelForm').submit(); return false;"
+                    class="ri-btn-ghost">← Back to Upload</a>
+                <button type="submit" class="ri-btn-confirm" id="confirmBtn">
+                    <span class="ri-btn-text">✓ Confirm & Lock Resume</span>
+                    <span class="ri-btn-spinner"></span>
+                </button>
+            </div>
+        </div>
+
+    </form>
+
+    <form id="cancelForm" method="post" action="{{ url_for('resume.cancel') }}" style="display:none;"></form>
+
+    {# ── Professional Summary (hidden, for form compat) ────── #}
+    <input type="hidden" form="confirmForm" name="summary" value="{{ data.parsed.summary or '' }}">
+</div>
+
+{# ════════════════════════════════════════════════════════════════ #}
+{# JAVASCRIPT — Animations, skill tags, score counters #}
+{# ════════════════════════════════════════════════════════════════ #}
+<script>
+    (function () {
+        /* ── Scroll fade-in sections ──────────────────────────────── */
+        const observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (e.isIntersecting) {
+                    e.target.classList.add('ri-visible');
+                    observer.unobserve(e.target);
+                }
+            });
+        }, { threshold: 0.08 });
+        document.querySelectorAll('[data-anim="fade"]').forEach(function (el) { observer.observe(el); });
+
+        /* ── Submit loading state ─────────────────────────────────── */
+        document.getElementById('confirmForm').addEventListener('submit', function () {
+            var btn = document.getElementById('confirmBtn');
+            btn.classList.add('ri-loading');
+            btn.disabled = true;
+        });
+
+        /* ── Audit section toggle ─────────────────────────────────── */
+        var auditToggle = document.getElementById('auditToggle');
+        var auditBody = document.getElementById('auditBody');
+        if (auditToggle && auditBody) {
+            auditToggle.addEventListener('click', function () {
+                var expanded = auditToggle.getAttribute('aria-expanded') === 'true';
+                auditToggle.setAttribute('aria-expanded', !expanded);
+                auditBody.style.maxHeight = expanded ? '0' : auditBody.scrollHeight + 'px';
+            });
+        }
+
+        /* ── Skill bubble logic ───────────────────────────────────── */
+        var wrap = document.getElementById('skillsBubbles');
+        var input = document.getElementById('skillInput');
+        var hidden = document.getElementById('skillsHidden');
+
+        function syncHidden() {
+            var tags = wrap.querySelectorAll('.ri-tag');
+            var skills = [];
+            tags.forEach(function (t) { var txt = t.childNodes[0].textContent.trim(); if (txt) skills.push(txt); });
+            hidden.value = skills.join(', ');
+        }
+
+        function addBubble(text) {
+            text = text.trim();
+            if (!text) return;
+            var existing = wrap.querySelectorAll('.ri-tag');
+            for (var i = 0; i < existing.length; i++) {
+                if (existing[i].childNodes[0].textContent.trim().toLowerCase() === text.toLowerCase()) return;
+            }
+            var span = document.createElement('span');
+            span.className = 'ri-tag ri-tag-new';
+            span.textContent = text + ' ';
+            var btn = document.createElement('button');
+            btn.type = 'button'; btn.className = 'ri-tag-x';
+            btn.setAttribute('aria-label', 'Remove'); btn.innerHTML = '&times;';
+            btn.addEventListener('click', function () { span.remove(); syncHidden(); });
+            span.appendChild(btn);
+            wrap.insertBefore(span, input);
+            syncHidden();
+        }
+
+        wrap.addEventListener('click', function (e) {
+            if (e.target.classList.contains('ri-tag-x')) { e.target.parentElement.remove(); syncHidden(); }
+            input.focus();
+        });
+
+        input.addEventListener('keydown', function (e) {
+            if (e.key === 'Enter' || e.key === ',') { e.preventDefault(); addBubble(input.value.replace(/,/g, '')); input.value = ''; }
+            if (e.key === 'Backspace' && !input.value) { var tags = wrap.querySelectorAll('.ri-tag'); if (tags.length) { tags[tags.length - 1].remove(); syncHidden(); } }
+        });
+        input.addEventListener('blur', function () { if (input.value.trim()) { addBubble(input.value); input.value = ''; } });
+    })();
+</script>
+{% endblock %}

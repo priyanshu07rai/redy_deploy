@@ -1,0 +1,143 @@
+{% extends 'base.html' %}
+
+{% block title %}Upload Resume{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-card">
+        <div class="dashboard-header">
+            <h1>Upload Your Resume</h1>
+            <span class="role-badge">Step 1 of 2</span>
+        </div>
+        <div class="dashboard-body">
+            {% for message in get_flashed_messages() %}
+            <div class="flash-message flash-error">⚠ {{ message }}</div>
+            {% endfor %}
+
+            <form method="post" enctype="multipart/form-data" id="uploadForm">
+                <div class="form-group">
+                    <label for="resume">
+                        <span class="label-icon">📄</span> Resume (PDF only)
+                    </label>
+                    <div class="upload-dropzone" id="dropzone">
+                        <input type="file" name="resume" id="resume" accept=".pdf" class="file-input" required>
+                        <div class="dropzone-content" id="dropzoneContent">
+                            <div class="dropzone-icon">📁</div>
+                            <p class="dropzone-text">Drag & drop your PDF here</p>
+                            <p class="dropzone-hint">or click to browse</p>
+                            <span class="dropzone-limit">Maximum 16 MB</span>
+                        </div>
+                        <div class="dropzone-preview" id="dropzonePreview" style="display:none;">
+                            <span class="preview-icon">📄</span>
+                            <span class="preview-name" id="fileName"></span>
+                            <span class="preview-size" id="fileSize"></span>
+                            <button type="button" class="preview-remove" id="removeFile">✕</button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="company_code">
+                        <span class="label-icon">🏢</span> Company Code
+                        <span class="required-tag">*</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <select name="company_code" id="company_code" class="form-control" required>
+                            <option value="" disabled selected>Select your company</option>
+                            {% for company in companies %}
+                            <option value="{{ company.company_code }}">{{ company.company_name }} ({{
+                                company.company_code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <p class="form-hint">Enter the unique code provided by the recruiter.</p>
+                </div>
+
+                <div class="form-group">
+                    <label for="github_username">
+                        <span class="label-icon">🐙</span> GitHub Username
+                        <span class="optional-tag">Optional</span>
+                    </label>
+                    <div class="input-wrapper">
+                        <input type="text" name="github_username" id="github_username" class="form-control"
+                            placeholder="e.g. octocat" autocomplete="off">
+                    </div>
+                    <p class="form-hint">We'll also auto-detect GitHub links from your resume.</p>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-glow" id="uploadBtn">
+                    <span class="btn-text">Analyze Resume</span>
+                    <span class="btn-arrow">→</span>
+                    <span class="spinner"></span>
+                </button>
+            </form>
+
+            <div class="auth-footer" style="margin-top: 2rem;">
+                <a href="{{ url_for('employee_dashboard') }}">← Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('resume');
+    const content = document.getElementById('dropzoneContent');
+    const preview = document.getElementById('dropzonePreview');
+    const nameEl = document.getElementById('fileName');
+    const sizeEl = document.getElementById('fileSize');
+    const removeBtn = document.getElementById('removeFile');
+
+    function showPreview(file) {
+        content.style.display = 'none';
+        preview.style.display = 'flex';
+        nameEl.textContent = file.name;
+        sizeEl.textContent = (file.size / 1024 / 1024).toFixed(2) + ' MB';
+        dropzone.classList.add('has-file');
+    }
+
+    function resetDropzone() {
+        content.style.display = '';
+        preview.style.display = 'none';
+        dropzone.classList.remove('has-file');
+        fileInput.value = '';
+    }
+
+    fileInput.addEventListener('change', (e) => {
+        if (e.target.files.length) showPreview(e.target.files[0]);
+    });
+
+    removeBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        resetDropzone();
+    });
+
+    // Drag and drop
+    ['dragenter', 'dragover'].forEach(evt => {
+        dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.add('drag-over'); });
+    });
+    ['dragleave', 'drop'].forEach(evt => {
+        dropzone.addEventListener(evt, (e) => { e.preventDefault(); dropzone.classList.remove('drag-over'); });
+    });
+    dropzone.addEventListener('drop', (e) => {
+        const files = e.dataTransfer.files;
+        if (files.length) {
+            fileInput.files = files;
+            showPreview(files[0]);
+        }
+    });
+
+    // Loading state
+    document.getElementById('uploadForm').addEventListener('submit', function () {
+        const btn = document.getElementById('uploadBtn');
+        btn.classList.add('btn-loading');
+        btn.disabled = true;
+    });
+
+    // Focus animation
+    document.querySelectorAll('.form-control').forEach(input => {
+        input.addEventListener('focus', function () { this.closest('.input-wrapper').classList.add('focused'); });
+        input.addEventListener('blur', function () { this.closest('.input-wrapper').classList.remove('focused'); });
+    });
+</script>
+{% endblock %}

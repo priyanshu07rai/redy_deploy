@@ -1,0 +1,131 @@
+{% extends 'base.html' %}
+
+{% block title %}Authentication{% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+    <div class="auth-card glass-card">
+        <!-- Tabs Header -->
+        <div class="auth-tabs">
+            <div class="auth-tab active" id="tabEmployee">Employee Signup</div>
+            <div class="auth-tab" id="tabRecruiter">Recruiter Login</div>
+        </div>
+
+        <div class="auth-card-body">
+            <!-- Flash Messages -->
+            {% for message in get_flashed_messages() %}
+            <div
+                class="flash-message {% if 'send' in message or 'Welcome' in message or 'success' in message %}flash-success{% else %}flash-error{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+
+            <!-- 👤 Employee Signup Pane -->
+            <div class="auth-form-pane active" id="paneEmployee">
+                <form action="{{ url_for('auth.register') }}" method="post">
+                    <div class="form-group">
+                        <label for="reg_email">Email Address</label>
+                        <input type="email" name="email" id="reg_email" class="form-control"
+                            placeholder="you@example.com" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="reg_password">Password</label>
+                        <input type="password" name="password" id="reg_password" class="form-control"
+                            placeholder="Minimum 6 characters" required minlength="6">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="confirm_password">Confirm Password</label>
+                        <input type="password" name="confirm_password" id="confirm_password" class="form-control"
+                            placeholder="Repeat your password" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        Send Verification Code
+                    </button>
+                </form>
+
+                <div class="auth-divider"
+                    style="margin-top: 2rem; text-align: center; border-top: 1px solid var(--card-border); padding-top: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        Already a member? <a href="{{ url_for('auth.login') }}"
+                            style="color: var(--primary-light); font-weight: 600; text-decoration: none;">Sign In</a>
+                    </p>
+                </div>
+            </div>
+
+            <!-- 🏢 Recruiter Login Pane -->
+            <div class="auth-form-pane" id="paneRecruiter">
+                <form action="{{ url_for('auth.recruiter_login') }}" method="post">
+                    <div class="form-group">
+                        <label for="company_id">Company ID</label>
+                        <select name="company_id" id="company_id" class="form-control" required>
+                            <option value="" disabled selected>Select your company</option>
+                            {% for company in companies %}
+                            <option value="{{ company.company_code }}">{{ company.company_name }} ({{
+                                company.company_code }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="recruiter_secret">Recruiter Secret Password</label>
+                        <input type="password" name="secret" id="recruiter_secret" class="form-control"
+                            placeholder="Enter secret code" required>
+                    </div>
+
+                    <button type="submit" class="btn-primary">
+                        Access Company Dashboard
+                    </button>
+                </form>
+
+                <div class="auth-divider"
+                    style="margin-top: 2rem; text-align: center; border-top: 1px solid var(--card-border); padding-top: 1.5rem;">
+                    <p style="color: var(--text-muted); font-size: 0.9rem;">
+                        Employee? <a href="javascript:void(0)" onclick="switchTab('employee')"
+                            style="color: var(--primary-light); font-weight: 600; text-decoration: none;">Create
+                            account</a>
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const tabEmployee = document.getElementById('tabEmployee');
+    const tabRecruiter = document.getElementById('tabRecruiter');
+    const paneEmployee = document.getElementById('paneEmployee');
+    const paneRecruiter = document.getElementById('paneRecruiter');
+
+    function switchTab(role) {
+        if (role === 'employee') {
+            tabEmployee.classList.add('active');
+            tabRecruiter.classList.remove('active');
+            paneEmployee.classList.add('active');
+            paneRecruiter.classList.remove('active');
+        } else {
+            tabEmployee.classList.remove('active');
+            tabRecruiter.classList.add('active');
+            paneEmployee.classList.remove('active');
+            paneRecruiter.classList.add('active');
+        }
+    }
+
+    tabEmployee.addEventListener('click', () => switchTab('employee'));
+    tabRecruiter.addEventListener('click', () => switchTab('recruiter'));
+
+    // Handle auto-switching if URL contains hash or flash message context
+    window.addEventListener('load', () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        // Check if there was an error in recruiter login
+        const flashMessages = document.querySelectorAll('.flash-message');
+        flashMessages.forEach(msg => {
+            if (msg.textContent.includes('Company ID')) {
+                switchTab('recruiter');
+            }
+        });
+    });
+</script>
+{% endblock %}

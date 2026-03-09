@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+
+{% block title %}Sign In{% endblock %}
+
+{% block content %}
+<div class="auth-page-wrapper">
+    <div class="auth-card glass-card">
+        <!-- Brand Section -->
+        <div class="auth-brand"
+            style="background: linear-gradient(135deg, #1e1b4b, #312e81); padding: 2.5rem; text-align: center;">
+            <div class="brand-icon"
+                style="margin: 0 auto 1rem; width: 56px; height: 56px; background: linear-gradient(135deg, var(--primary), var(--accent)); border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 24px; box-shadow: 0 8px 16px rgba(0,0,0,0.3);">
+                ⚡</div>
+            <h1 style="color: white; font-size: 1.5rem; margin-bottom: 0.5rem;">Welcome Back</h1>
+            <p style="color: rgba(255,255,255,0.7); font-size: 0.9rem;">Sign in to your AI Hiring Platform</p>
+        </div>
+
+        <div class="auth-card-body" style="padding: 2.5rem;">
+            {% for message in get_flashed_messages() %}
+            <div
+                class="flash-message {% if 'successful' in message or 'success' in message %}flash-success{% else %}flash-error{% endif %}">
+                {{ message }}
+            </div>
+            {% endfor %}
+
+            <form method="post" id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" name="email" id="email" class="form-control" placeholder="you@example.com"
+                        required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" name="password" id="password" class="form-control"
+                        placeholder="Enter your password" required>
+                </div>
+
+                <div class="form-options"
+                    style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 2rem;">
+                    <label
+                        style="display: flex; align-items: center; gap: 8px; color: var(--text-secondary); font-size: 0.85rem; cursor: pointer;">
+                        <input type="checkbox" name="remember" id="remember" style="accent-color: var(--primary);">
+                        Remember me
+                    </label>
+                </div>
+
+                <button type="submit" class="btn-primary">
+                    Sign In
+                </button>
+            </form>
+
+            <div class="auth-divider"
+                style="margin-top: 2rem; text-align: center; border-top: 1px solid var(--card-border); padding-top: 1.5rem;">
+                <p style="color: var(--text-muted); font-size: 0.9rem;">
+                    New here? <a href="{{ url_for('auth.register') }}"
+                        style="color: var(--primary-light); font-weight: 600; text-decoration: none;">Create an
+                        Account</a>
+                </p>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

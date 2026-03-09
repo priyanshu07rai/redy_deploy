@@ -1,0 +1,516 @@
+{% extends 'base.html' %}
+
+{% block title %}Resume Intelligence — Analysis{% endblock %}
+
+{% block extra_head %}
+<link rel="stylesheet" href="{{ url_for('static', filename='confirm.css') }}">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+    .page-container {
+        max-width: 100%;
+        padding: 0;
+        background: transparent;
+    }
+
+    body {
+        font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .navbar {
+        background: rgba(15, 23, 42, 0.9);
+        backdrop-filter: blur(16px);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+{# ── Compute values (Role-Based) ────────────────────────── #}
+{% set is_recruiter = (role == 'recruiter') %}
+
+{% if is_recruiter %}
+{% set resume_score = candidate['resume_score'] %}
+{% set skill_pct = ((candidate['skill_count'] / 10 * 100) | round | int) %}
+{% set identity_pct = (candidate['identity_score'] | round | int) %}
+{% set github_pct = (candidate['github_score'] | round | int) %}
+{% set fraud_pct = (candidate['fraud_probability'] * 100) | round(1) %}
+{% set fraud_pen = (candidate['fraud_probability'] * 30) | round(1) %}
+{% endif %}
+
+{# ── Motion Background ──────────────────────────────────── #}
+<div class="ri-bg">
+    <div class="ri-bg-orb ri-bg-orb-1"></div>
+    <div class="ri-bg-orb ri-bg-orb-2"></div>
+    <div class="ri-bg-orb ri-bg-orb-3"></div>
+</div>
+
+<div class="ri-page" data-role="{{ role }}">
+
+    {% for message in get_flashed_messages() %}
+    <div class="ri-flash" style="background:rgba(34,197,94,0.15);border-color:rgba(34,197,94,0.3);color:#86efac;">
+        ✓ {{ message }}
+    </div>
+    {% endfor %}
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# HERO — Role-Based Header #}
+    {# ════════════════════════════════════════════════════════════ #}
+    {% if is_recruiter %}
+    <section class="ri-hero" data-anim="fade">
+        <div class="ri-hero-inner">
+            <div class="ri-hero-ring-wrap">
+                <svg class="ri-ring" viewBox="0 0 160 160">
+                    <circle class="ri-ring-bg" cx="80" cy="80" r="70"></circle>
+                    <circle class="ri-ring-fg" cx="80" cy="80" r="70" stroke-dasharray="440" stroke-dashoffset="440"
+                        data-target="{{ resume_score }}"></circle>
+                </svg>
+                <div class="ri-ring-label">
+                    <span class="ri-ring-num" data-count="{{ resume_score }}">0</span>
+                    <span class="ri-ring-sub">INTELLIGENCE SCORE</span>
+                </div>
+            </div>
+            <div class="ri-hero-meta">
+                <span class="ri-badge ri-badge-conf">
+                    📋 Version {{ candidate['resume_version'] }}
+                </span>
+                {% if fraud_lvl == 'Low' %}
+                <span class="ri-badge ri-badge-ok">✅ {{ fraud_lvl }} Risk — {{ fraud_pct }}%</span>
+                {% elif fraud_lvl == 'Medium' %}
+                <span class="ri-badge ri-badge-warn">⚡ {{ fraud_lvl }} Risk — {{ fraud_pct }}%</span>
+                {% else %}
+                <span class="ri-badge ri-badge-fraud">⚠ {{ fraud_lvl }} Risk — {{ fraud_pct }}%</span>
+                {% endif %}
+                <span class="ri-badge"
+                    style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#86efac;">
+                    ✓ {{ candidate['status'] | title }}
+                </span>
+            </div>
+        </div>
+    </section>
+
+    {# SCORE BREAKDOWN (Recruiter Only) #}
+    <section class="ri-card" data-anim="fade">
+        <div class="ri-card-head">
+            <h2>📊 Score Breakdown</h2>
+            <span class="ri-card-badge">🔒 Deterministic</span>
+        </div>
+        <div class="ri-bars">
+            <div class="ri-bar-row">
+                <span class="ri-bar-label">Skill Score <small>(50%)</small></span>
+                <div class="ri-bar-track">
+                    <div class="ri-bar-fill ri-bar-skill" data-width="{{ skill_pct }}" style="width:0%"></div>
+                </div>
+                <span class="ri-bar-val">{{ skill_pct }}</span>
+            </div>
+            <div class="ri-bar-row">
+                <span class="ri-bar-label">Identity Score <small>(20%)</small></span>
+                <div class="ri-bar-track">
+                    <div class="ri-bar-fill ri-bar-identity" data-width="{{ identity_pct }}" style="width:0%"></div>
+                </div>
+                <span class="ri-bar-val">{{ identity_pct }}</span>
+            </div>
+            <div class="ri-bar-row">
+                <span class="ri-bar-label">GitHub Score <small>(30%)</small></span>
+                <div class="ri-bar-track">
+                    <div class="ri-bar-fill ri-bar-github" data-width="{{ github_pct }}" style="width:0%"></div>
+                </div>
+                <span class="ri-bar-val">{{ github_pct }}</span>
+            </div>
+            <div class="ri-bar-row">
+                <span class="ri-bar-label">Fraud Penalty</span>
+                <div class="ri-bar-track">
+                    <div class="ri-bar-fill ri-bar-fraud" data-width="{{ (fraud_pen * 3.33)|int|abs }}"
+                        style="width:0%"></div>
+                </div>
+                <span class="ri-bar-val ri-val-red">-{{ fraud_pen }}</span>
+            </div>
+        </div>
+    </section>
+
+    {# INTERVIEW INTELLIGENCE (Recruiter Only) #}
+    {% if interview %}
+    <section class="ri-card" data-anim="fade" style="border-left: 4px solid #10b981;">
+        <div class="ri-card-head">
+            <h2>🎬 Interview Intelligence</h2>
+            <span class="ri-card-badge" style="background:rgba(16,185,129,0.15); color:#10b981;">Phase 3
+                Completed</span>
+        </div>
+        <div class="ri-grid-2" style="margin-top: 15px;">
+            <div class="ra-info">
+                <span class="ri-field-label">🛡 Integrity Index</span>
+                <span class="ra-val ra-val-big"
+                    style="color: {{ '#10b981' if interview['integrity_index'] >= 80 else '#f59e0b' if interview['integrity_index'] >= 50 else '#ef4444' }};">
+                    {{ "%.0f"|format(interview['integrity_index']) }}
+                </span>
+            </div>
+            <div class="ra-info">
+                <span class="ri-field-label">🎯 Final Answer Score</span>
+                <span class="ra-val ra-val-big" style="color: #6366f1;">
+                    {{ "%.0f"|format(interview['final_answer_score']) }}
+                </span>
+            </div>
+        </div>
+        <div style="margin-top: 15px; padding-top: 15px; border-top: 1px solid rgba(255,255,255,0.06);">
+            <a href="{{ url_for('interview.results', interview_id=interview['id']) }}" class="ri-btn-ghost"
+                style="font-size: 13px;">
+                🔍 View Full Interview Report & Recording →
+            </a>
+        </div>
+    </section>
+    {% endif %}
+
+    {% else %}
+    {# Resume Profile Header (Employee View) #}
+    <section class="ri-hero" data-anim="fade">
+        <div class="ri-hero-inner" style="text-align:center;">
+            <div style="font-size:48px;margin-bottom:12px;">📝</div>
+            <h1 style="font-size:24px;font-weight:700;color:#f1f5f9;margin-bottom:8px;">Resume Profile</h1>
+            <p style="color:#94a3b8;font-size:14px;margin-bottom:16px;">Your verified resume data is shown below.</p>
+            <div class="ri-hero-meta">
+                <span class="ri-badge ri-badge-conf">
+                    📋 Version {{ candidate['resume_version'] }}
+                </span>
+                <span class="ri-badge"
+                    style="background:rgba(34,197,94,0.12);border:1px solid rgba(34,197,94,0.3);color:#86efac;">
+                    ✓ {{ candidate['status'] | title }}
+                </span>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# IDENTITY #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <section class="ri-card" data-anim="fade">
+        <div class="ri-card-head">
+            <h2>👤 Identity</h2>
+        </div>
+        <div class="ri-grid-2">
+            <div class="ra-info">
+                <span class="ri-field-label">Full Name</span>
+                <span class="ra-val">{{ candidate['full_name'] or '—' }}</span>
+            </div>
+            <div class="ra-info">
+                <span class="ri-field-label">Email</span>
+                <span class="ra-val">{{ candidate['email_extracted'] or '—' }}</span>
+            </div>
+            <div class="ra-info">
+                <span class="ri-field-label">Phone</span>
+                <span class="ra-val">{{ candidate['phone'] or '—' }}</span>
+            </div>
+            <div class="ra-info">
+                <span class="ri-field-label">Location</span>
+                <span class="ra-val">{{ candidate['location'] or '—' }}</span>
+            </div>
+        </div>
+    </section>
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# SKILLS #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <section class="ri-card" data-anim="fade">
+        <div class="ri-card-head">
+            <h2>🛠 Skills</h2>
+            <span class="ri-card-badge ri-badge-count">{{ skills|length }} detected</span>
+        </div>
+        {% if skills %}
+        <div class="ri-tags-wrap" style="cursor:default;">
+            {% for skill in skills %}
+            <span class="ri-tag" style="cursor:default;">{{ skill }}</span>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p style="color:#64748b;font-size:0.88rem;">No skills detected.</p>
+        {% endif %}
+    </section>
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# EXPERIENCE & EDUCATION #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <div class="ri-split" data-anim="fade">
+        <section class="ri-card ri-card-half">
+            <div class="ri-card-head">
+                <h2>💼 Experience</h2>
+            </div>
+            <div class="ra-stack">
+                <div class="ra-info">
+                    <span class="ri-field-label">Years</span>
+                    <span class="ra-val ra-val-big">{{ candidate['years_experience'] }}</span>
+                </div>
+                {% if extended.get('job_titles') %}
+                <div class="ra-info">
+                    <span class="ri-field-label">Job Titles</span>
+                    <span class="ra-val">{{ extended['job_titles'] | join(', ') }}</span>
+                </div>
+                {% endif %}
+                {% if extended.get('companies') %}
+                <div class="ra-info">
+                    <span class="ri-field-label">Companies</span>
+                    <span class="ra-val">{{ extended['companies'] | join(', ') }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+        <section class="ri-card ri-card-half">
+            <div class="ri-card-head">
+                <h2>🎓 Education</h2>
+            </div>
+            <div class="ra-stack">
+                <div class="ra-info">
+                    <span class="ri-field-label">Degree</span>
+                    <span class="ra-val">{{ candidate['degree'] or '—' }}</span>
+                </div>
+                <div class="ra-info">
+                    <span class="ri-field-label">University</span>
+                    <span class="ra-val">{{ candidate['university'] or '—' }}</span>
+                </div>
+                {% if extended.get('graduation_year') %}
+                <div class="ra-info">
+                    <span class="ri-field-label">Year</span>
+                    <span class="ra-val">{{ extended['graduation_year'] }}</span>
+                </div>
+                {% endif %}
+                {% if extended.get('gpa') %}
+                <div class="ra-info">
+                    <span class="ri-field-label">GPA</span>
+                    <span class="ra-val">{{ extended['gpa'] }}</span>
+                </div>
+                {% endif %}
+            </div>
+        </section>
+    </div>
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# LINKS & GITHUB #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <section class="ri-card" data-anim="fade">
+        <div class="ri-card-head">
+            <h2>🔗 Links</h2>
+        </div>
+        <div class="ri-grid-2">
+            <div class="ra-info">
+                <span class="ri-field-label">GitHub</span>
+                <span class="ra-val">
+                    {% if candidate['github_username'] %}
+                    <a href="https://github.com/{{ candidate['github_username'] }}" target="_blank"
+                        style="color:#a5b4fc;text-decoration:none;">
+                        @{{ candidate['github_username'] }} ↗
+                    </a>
+                    {% else %}—{% endif %}
+                </span>
+            </div>
+            {% if extended.get('linkedin_url') %}
+            <div class="ra-info">
+                <span class="ri-field-label">LinkedIn</span>
+                <span class="ra-val">
+                    <a href="{{ extended['linkedin_url'] }}" target="_blank"
+                        style="color:#a5b4fc;text-decoration:none;">
+                        {{ extended['linkedin_url'][:40] }}… ↗
+                    </a>
+                </span>
+            </div>
+            {% endif %}
+            {% if extended.get('portfolio_url') %}
+            <div class="ra-info ri-field-full">
+                <span class="ri-field-label">Portfolio</span>
+                <span class="ra-val">
+                    <a href="{{ extended['portfolio_url'] }}" target="_blank"
+                        style="color:#a5b4fc;text-decoration:none;">
+                        {{ extended['portfolio_url'][:50] }}… ↗
+                    </a>
+                </span>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# CERTIFICATIONS, PROJECTS, ACHIEVEMENTS #}
+    {# ════════════════════════════════════════════════════════════ #}
+    {% if extended.get('certifications') or extended.get('projects') or extended.get('achievements') %}
+    <section class="ri-card" data-anim="fade">
+        <div class="ri-card-head">
+            <h2>🏆 Certifications, Projects & Achievements</h2>
+        </div>
+        <div class="ri-grid-2">
+            {% if extended.get('certifications') %}
+            <div class="ra-info">
+                <span class="ri-field-label">Certifications</span>
+                <span class="ra-val">{{ extended['certifications'] | join(', ') }}</span>
+            </div>
+            {% endif %}
+            {% if extended.get('projects') %}
+            <div class="ra-info">
+                <span class="ri-field-label">Projects</span>
+                <span class="ra-val">{{ extended['projects'] | join(', ') }}</span>
+            </div>
+            {% endif %}
+            {% if extended.get('achievements') %}
+            <div class="ra-info ri-field-full">
+                <span class="ri-field-label">Achievements</span>
+                <span class="ra-val">{{ extended['achievements'] | join(', ') }}</span>
+            </div>
+            {% endif %}
+        </div>
+    </section>
+    {% endif %}
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# AI SUMMARY #}
+    {# ════════════════════════════════════════════════════════════ #}
+    {% if candidate['ai_generated_summary'] or candidate['user_edited_summary'] or extended.get('summary') %}
+    <section class="ri-card ri-card-ai" data-anim="fade">
+        <div class="ri-card-head">
+            <h2>🤖 Professional Summary</h2>
+            {% if candidate['ai_generated_summary'] %}
+            <span class="ri-card-badge ri-badge-ai">AI Generated</span>
+            {% endif %}
+        </div>
+        <div class="ra-summary-text">
+            {{ candidate['user_edited_summary'] or candidate['ai_generated_summary'] or extended.get('summary', '') }}
+        </div>
+    </section>
+    {% endif %}
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# FRAUD ANALYSIS (Recruiter Only) #}
+    {# ════════════════════════════════════════════════════════════ #}
+    {% if is_recruiter %}
+    <section class="ri-card" data-anim="fade">
+        <div class="ri-card-head">
+            <h2>🚨 Fraud Analysis</h2>
+        </div>
+        <div class="ra-fraud-wrap">
+            <div class="ra-fraud-bar-track"
+                style="height: 8px; background: rgba(255,255,255,0.05); border-radius: 4px; overflow: hidden; margin-bottom: 12px;">
+                <div class="ra-fraud-bar-fill ra-fraud-{{ fraud_lvl|lower }}" data-width="{{ fraud_pct|int }}"
+                    style="width:0%; height:100%; transition: width 1.4s cubic-bezier(0.4,0,0.2,1); background: {{ '#ef4444' if fraud_lvl == 'High' else '#f59e0b' if fraud_lvl == 'Medium' else '#3b82f6' }};">
+                </div>
+            </div>
+            <div class="ra-fraud-info">
+                <span
+                    class="ri-badge {% if fraud_lvl == 'Low' %}ri-badge-ok{% elif fraud_lvl == 'Medium' %}ri-badge-warn{% else %}ri-badge-fraud{% endif %}">
+                    {{ fraud_lvl }} Risk
+                </span>
+                <span style="color:#94a3b8;font-size:0.85rem;">{{ fraud_pct }}% probability</span>
+            </div>
+        </div>
+    </section>
+    {% endif %}
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# METADATA (collapsible) #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <section class="ri-card ri-card-audit" data-anim="fade">
+        <button type="button" class="ri-audit-toggle" id="auditToggle" aria-expanded="false">
+            🔐 Resume Metadata
+            <svg class="ri-chev" viewBox="0 0 24 24">
+                <path d="M6 9l6 6 6-6" />
+            </svg>
+        </button>
+        <div class="ri-audit-body" id="auditBody">
+            <div class="ri-grid-2">
+                <div class="ri-audit-item">
+                    <span class="ri-audit-label">Version</span>
+                    <span class="ri-audit-val">{{ candidate['resume_version'] }}</span>
+                </div>
+                <div class="ri-audit-item">
+                    <span class="ri-audit-label">SHA-256</span>
+                    <span class="ri-audit-val mono">{{ candidate['resume_hash'][:24] }}…</span>
+                </div>
+                <div class="ri-audit-item">
+                    <span class="ri-audit-label">Submitted</span>
+                    <span class="ri-audit-val">{{ candidate['created_at'] }}</span>
+                </div>
+                <div class="ri-audit-item">
+                    <span class="ri-audit-label">Status</span>
+                    <span class="ri-audit-val" style="color:#86efac;">✓ {{ candidate['status'] | title }}</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    {# ════════════════════════════════════════════════════════════ #}
+    {# ACTION BAR #}
+    {# ════════════════════════════════════════════════════════════ #}
+    <div class="ri-action-spacer"></div>
+    <div class="ri-action-bar">
+        <div class="ri-action-inner">
+            <a href="{{ url_for('employee_dashboard') }}" class="ri-btn-ghost">← Back to Dashboard</a>
+            <div style="display:flex;gap:10px;">
+                <a href="{{ url_for('resume.view_pdf') }}" target="_blank" class="ri-btn-ghost"
+                    style="color:#a5b4fc;">📄 View PDF</a>
+                {% if interview %}
+                <a href="{{ url_for('interview.results', interview_id=interview['id']) }}" class="ri-btn-ghost"
+                    style="color:#10b981; border-color: rgba(16,185,129,0.3); background: rgba(16,185,129,0.05);">
+                    🎬 View Interview Analysis
+                </a>
+                {% endif %}
+                <a href="{{ url_for('resume.upload') }}" class="ri-btn-confirm" style="text-decoration:none;">
+                    <span class="ri-btn-text">⬆ Upload New Version</span>
+                </a>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<script>
+    (function () {
+        /* ── Scroll fade-in ─────────────────────────────────────── */
+        var observer = new IntersectionObserver(function (entries) {
+            entries.forEach(function (e) {
+                if (e.isIntersecting) { e.target.classList.add('ri-visible'); observer.unobserve(e.target); }
+            });
+        }, { threshold: 0.08 });
+        document.querySelectorAll('[data-anim="fade"]').forEach(function (el) { observer.observe(el); });
+
+        var isRecruiter = document.querySelector('.ri-page').dataset.role === 'recruiter';
+        if (isRecruiter) {
+            /* ── Score ring (Recruiter only) ────────────────────────── */
+            var ring = document.querySelector('.ri-ring-fg');
+            var numEl = document.querySelector('.ri-ring-num');
+            if (ring && numEl) {
+                var target = parseFloat(ring.dataset.target) || 0;
+                var circ = 2 * Math.PI * 70;
+                ring.style.strokeDasharray = circ;
+                ring.style.strokeDashoffset = circ;
+                setTimeout(function () {
+                    ring.style.transition = 'stroke-dashoffset 1.8s cubic-bezier(0.4,0,0.2,1)';
+                    ring.style.strokeDashoffset = circ - (target / 100) * circ;
+                    var cur = 0, step = target / 60;
+                    var iv = setInterval(function () {
+                        cur += step;
+                        if (cur >= target) { cur = target; clearInterval(iv); }
+                        numEl.textContent = cur.toFixed(1);
+                    }, 25);
+                }, 400);
+            }
+
+            /* ── Animated bars (Recruiter only) ─────────────────────── */
+            setTimeout(function () {
+                document.querySelectorAll('.ri-bar-fill, .ra-fraud-bar-fill').forEach(function (bar) {
+                    var w = Math.min(parseInt(bar.dataset.width) || 0, 100);
+                    bar.style.transition = 'width 1.4s cubic-bezier(0.4,0,0.2,1)';
+                    bar.style.width = w + '%';
+                });
+            }, 600);
+        }
+
+        /* ── Audit toggle ─────────────────────────────────────────── */
+        var tog = document.getElementById('auditToggle');
+        var body = document.getElementById('auditBody');
+        if (tog && body) {
+            tog.addEventListener('click', function () {
+                var exp = tog.getAttribute('aria-expanded') === 'true';
+                tog.setAttribute('aria-expanded', !exp);
+                body.style.maxHeight = exp ? '0' : body.scrollHeight + 'px';
+            });
+        }
+    })();
+</script>
+{% endblock %}

@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interview Results — AI Hiring Platform</title>
+    <meta name="description"
+        content="Interview results with integrity scoring, answer analysis, and tamper-proof verification">
+    <link rel="stylesheet" href="{{ url_for('static', filename='interview.css') }}">
+</head>
+
+<body class="interview-body">
+
+    <!-- ═══ Header ═══════════════════════════════════════════════════════ -->
+    <header class="interview-header">
+        <div class="header-brand">
+            <div class="icon">📊</div>
+            <span>Interview Results</span>
+        </div>
+        <div class="header-status">
+            <a href="{{ url_for('employee_dashboard') }}" class="btn-back">← Back to Dashboard</a>
+        </div>
+    </header>
+
+    <!-- ═══ Results Content ══════════════════════════════════════════════ -->
+    <div class="results-container">
+
+        <!-- Header -->
+        <div class="results-header">
+            <h1>Interview Assessment Report</h1>
+            <p>Session #{{ interview['id'] }} · {{ interview['created_at'] }}</p>
+        </div>
+
+        {% if role == 'recruiter' %}
+        <!-- ═══ RECRUITER VIEW — Full Scores ═══════════════════════════ -->
+
+        <!-- Score Cards -->
+        <div class="scores-grid">
+            <!-- Integrity Index -->
+            <div class="score-card">
+                <div class="score-label">🛡 Integrity Index</div>
+                <div class="score-value {{ 'excellent' if interview['integrity_index'] >= 80 else 'good' if interview['integrity_index'] >= 60 else 'average' if interview['integrity_index'] >= 40 else 'poor' }}"
+                    id="integrityScore">
+                    {{ "%.0f"|format(interview['integrity_index'] or 0) }}
+                </div>
+                <div class="score-bar">
+                    <div class="score-bar-fill" id="integrityBar"
+                        style="width: {{ interview['integrity_index'] or 0 }}%;
+                                background: {{ 'var(--gradient-success)' if interview['integrity_index'] >= 80 else 'var(--gradient-warning)' if interview['integrity_index'] >= 50 else 'var(--gradient-danger)' }};">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Baseline Answer Score -->
+            <div class="score-card">
+                <div class="score-label">📐 Baseline Score</div>
+                <div
+                    class="score-value {{ 'excellent' if interview['baseline_answer_score'] >= 80 else 'good' if interview['baseline_answer_score'] >= 60 else 'average' if interview['baseline_answer_score'] >= 40 else 'poor' }}">
+                    {{ "%.0f"|format(interview['baseline_answer_score'] or 0) }}
+                </div>
+                <div class="score-bar">
+                    <div class="score-bar-fill" style="width: {{ interview['baseline_answer_score'] or 0 }}%;
+                                background: var(--gradient-primary);"></div>
+                </div>
+            </div>
+
+            <!-- AI Content Score -->
+            <div class="score-card">
+                <div class="score-label">🧠 Content Score</div>
+                <div
+                    class="score-value {{ 'excellent' if interview['ai_answer_score'] >= 80 else 'good' if interview['ai_answer_score'] >= 60 else 'average' if interview['ai_answer_score'] >= 40 else 'poor' }}">
+                    {{ "%.0f"|format(interview['ai_answer_score'] or 0) }}
+                </div>
+                <div class="score-bar">
+                    <div class="score-bar-fill" style="width: {{ interview['ai_answer_score'] or 0 }}%;
+                                 background: linear-gradient(135deg, #8b5cf6, #a78bfa);"></div>
+                </div>
+            </div>
+
+            <!-- Confidence Score (Phase 5) -->
+            <div class="score-card">
+                <div class="score-label">🎭 Confidence</div>
+                <div
+                    class="score-value {{ 'excellent' if interview['confidence_score'] >= 80 else 'good' if interview['confidence_score'] >= 60 else 'average' if interview['confidence_score'] >= 40 else 'poor' }}">
+                    {{ "%.0f"|format(interview['confidence_score'] or 0) }}
+                </div>
+                <div class="score-bar">
+                    <div class="score-bar-fill" style="width: {{ interview['confidence_score'] or 0 }}%;
+                                 background: var(--gradient-success);"></div>
+                </div>
+            </div>
+
+            <!-- Final Answer Score -->
+            <div class="score-card"
+                style="border-color: rgba(99, 102, 241, 0.3); box-shadow: 0 0 30px rgba(99, 102, 241, 0.1);">
+                <div class="score-label">🎯 Final Score</div>
+                <div
+                    class="score-value {{ 'excellent' if interview['final_answer_score'] >= 80 else 'good' if interview['final_answer_score'] >= 60 else 'average' if interview['final_answer_score'] >= 40 else 'poor' }}">
+                    {{ "%.0f"|format(interview['final_answer_score'] or 0) }}
+                </div>
+                <div class="score-bar">
+                    <div class="score-bar-fill" style="width: {{ interview['final_answer_score'] or 0 }}%;
+                                 background: var(--gradient-primary);"></div>
+                </div>
+                <div style="margin-top: 8px; font-size: 11px; color: var(--text-muted);">
+                    60% Base + 25% AI + 15% Confidence
+                </div>
+            </div>
+        </div>
+
+        <!-- Detail Grid -->
+        <div class="detail-grid">
+
+            <!-- Video Playback -->
+            <div class="detail-card">
+                <h3>🎬 Recording</h3>
+                {% if video_filename %}
+                <video class="results-video" controls preload="metadata">
+                    <source src="{{ url_for('interview.stream', filename=video_filename) }}" type="video/webm">
+                    Your browser does not support video playback.
+                </video>
+                {% else %}
+                <p style="color: var(--text-muted); font-size: 14px;">No video available</p>
+                {% endif %}
+
+                <!-- Hash Verification -->
+                <div class="hash-status {{ 'verified' if hash_valid else 'failed' if hash_valid == False else '' }}">
+                    {% if hash_valid %}
+                    ✅ Integrity verified — record has not been tampered with
+                    {% elif hash_valid == False %}
+                    ❌ Hash mismatch — possible tampering detected
+                    {% else %}
+                    ⚠ No hash available for verification
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Questions Asked -->
+            <div class="detail-card">
+                <h3>❓ Questions Asked</h3>
+                <div class="ra-stack"
+                    style="gap: 8px; margin-top: 12px; max-height: 250px; overflow-y: auto; padding-right: 5px;">
+                    {% if questions_asked %}
+                    {% for q in questions_asked %}
+                    <div
+                        style="padding: 12px; background: rgba(255,255,255,0.03); border-radius: 8px; font-size: 13px; color: var(--text-secondary); border-left: 3px solid var(--accent-indigo); line-height: 1.4;">
+                        {{ q }}
+                    </div>
+                    {% endfor %}
+                    {% else %}
+                    <p style="color: var(--text-muted); font-size: 13px;">No question record available.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Transcript -->
+            <div class="detail-card" style="grid-column: 1 / -1; border-top: 2px solid var(--accent-indigo);">
+                <div style="display:flex; justify-content: space-between; align-items: center; margin-bottom: 12px;">
+                    <h3 style="margin: 0;">📝 STT Transcript</h3>
+                    <span class="stt-badge">Real-time Stream</span>
+                </div>
+                <div class="transcript-box">{{ interview['transcript_stt'] or 'No STT record captured.' }}</div>
+            </div>
+        </div>
+
+        <!-- Score Methodology -->
+        <div class="detail-card" style="margin-bottom: 32px;">
+            <h3>📐 Scoring Methodology</h3>
+            <div
+                style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; font-size: 13px; color: var(--text-secondary);">
+                <div>
+                    <strong style="color: var(--text-primary);">Integrity Index (Deterministic)</strong>
+                    <p style="margin-top: 6px; line-height: 1.6;">
+                        Starts at 100, deductions applied per anomaly:<br>
+                        Tab switch: -5 · Window blur: -5 · No face: -0.4/sec<br>
+                        Multiple faces: -15 · Copy attempt: -10 · Fullscreen exit: -8<br>
+                        <em style="color: var(--text-muted);">AI never touches this score.</em>
+                    </p>
+                </div>
+                <div>
+                    <strong style="color: var(--text-primary);">Answer Score (Hybrid)</strong>
+                    <p style="margin-top: 6px; line-height: 1.6;">
+                        Baseline (70%): word count, filler ratio, keyword relevance, vocabulary richness.<br>
+                        AI Enhancement (30%): clarity, depth, technical accuracy, communication.<br>
+                        <em style="color: var(--text-muted);">AI influence deliberately limited to 30%.</em>
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        {% else %}
+        <!-- ═══ EMPLOYEE VIEW — Status Only, No Scores ═════════════════ -->
+        <div class="detail-card" style="text-align: center; padding: 48px 24px; margin-bottom: 32px;">
+            <div style="font-size: 64px; margin-bottom: 16px;">✅</div>
+            <h2 style="font-size: 22px; font-weight: 700; color: var(--accent-emerald); margin-bottom: 12px;">
+                Interview Completed — Under Review
+            </h2>
+            <p
+                style="color: var(--text-secondary); font-size: 14px; line-height: 1.7; max-width: 480px; margin: 0 auto;">
+                Your interview has been submitted and is being reviewed by the hiring team.
+                You will be notified when the evaluation is complete.
+            </p>
+            <div style="margin-top: 24px;">
+                <a href="{{ url_for('employee_dashboard') }}" class="btn-back" style="display: inline-flex;">
+                    ← Return to Dashboard
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+    </div>
+
+    <!-- Animate score bars on load -->
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // Animate bars from 0 to their target width
+            document.querySelectorAll('.score-bar-fill').forEach(bar => {
+                const target = bar.style.width;
+                bar.style.width = '0%';
+                setTimeout(() => { bar.style.width = target; }, 300);
+            });
+        });
+    </script>
+</body>
+
+</html>

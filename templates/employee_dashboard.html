@@ -1,0 +1,206 @@
+{% extends 'base.html' %}
+
+{% block title %}Employee Dashboard{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="dashboard-card">
+        <div class="dashboard-header">
+            <h1>Welcome{% if user %}, {{ user['email'].split('@')[0] | title }}{% endif %}</h1>
+            <span class="role-badge">Employee</span>
+        </div>
+        <div class="dashboard-body">
+            {% for message in get_flashed_messages() %}
+            {% if 'success' in message or 'submitted' in message or 'completed' in message %}
+            <div class="flash-message flash-success">✓ {{ message }}</div>
+            {% else %}
+            <div class="flash-message flash-error">⚠ {{ message }}</div>
+            {% endif %}
+            {% endfor %}
+
+            {% if candidate %}
+            {# ── Progress Timeline ────────────────────────────────── #}
+            {% set iv_status = candidate['interview_status'] if candidate['interview_status'] else 'NOT_STARTED' %}
+            <div class="progress-timeline">
+                <div class="step {% if candidate %}completed{% endif %}">
+                    <div class="step-dot"></div>
+                    <span class="step-label">Resume Uploaded</span>
+                </div>
+                <div class="step {% if candidate['status'] == 'confirmed' %}completed{% endif %}">
+                    <div class="step-dot"></div>
+                    <span class="step-label">Resume Verified</span>
+                </div>
+                <div
+                    class="step {% if iv_status == 'COMPLETED' or iv_status == 'VERIFIED' %}completed{% elif iv_status == 'IN_PROGRESS' %}active{% endif %}">
+                    <div class="step-dot"></div>
+                    <span class="step-label">Interview Started</span>
+                </div>
+                <div
+                    class="step {% if iv_status == 'VERIFIED' %}completed{% elif iv_status == 'COMPLETED' %}active{% endif %}">
+                    <div class="step-dot"></div>
+                    <span class="step-label">Final Review</span>
+                </div>
+            </div>
+
+            {# ── Dual Intelligence Panels ────────────────────────── #}
+            <div class="intelligence-grid">
+                <!-- Resume Intelligence Card -->
+                <div class="intelligence-card resume-card">
+                    <div class="card-header">
+                        <div class="card-icon">📄</div>
+                        <div class="card-title">
+                            <h3>Resume Intelligence</h3>
+                            <span class="status-badge verified">Verified</span>
+                        </div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Version</span>
+                            <span class="stat-value">{{ candidate['resume_version'] }}</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Skills Found</span>
+                            <span class="stat-value">{{ skills | length }}</span>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        <a href="{{ url_for('resume.analysis') }}" class="btn-dashboard primary">View Analysis</a>
+                        <a href="{{ url_for('resume.upload') }}" class="btn-dashboard secondary">Upload New</a>
+                    </div>
+                </div>
+
+                <!-- Interview Intelligence Card -->
+                <div class="intelligence-card interview-card">
+                    <div class="card-header">
+                        <div class="card-icon">🎬</div>
+                        <div class="card-title">
+                            <h3>Interview Intelligence</h3>
+                            {% if iv_status == 'NOT_STARTED' %}
+                            <span class="status-badge empty">Not Started</span>
+                            {% elif iv_status == 'IN_PROGRESS' %}
+                            <span class="status-badge pending">In Progress</span>
+                            {% elif iv_status == 'COMPLETED' %}
+                            <span class="status-badge review">Under Review</span>
+                            {% elif iv_status == 'VERIFIED' %}
+                            <span class="status-badge verified">Verified</span>
+                            {% endif %}
+                        </div>
+                    </div>
+                    <div class="card-stats">
+                        <div class="stat-item">
+                            <span class="stat-label">Status</span>
+                            <span class="stat-value">
+                                {% if iv_status == 'NOT_STARTED' %}Ready to Start
+                                {% elif iv_status == 'IN_PROGRESS' %}Recording...
+                                {% elif iv_status == 'COMPLETED' %}Submitted
+                                {% elif iv_status == 'VERIFIED' %}Confirmed
+                                {% endif %}
+                            </span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-label">Date</span>
+                            <span class="stat-value">{% if interview %}{{ interview['created_at']|string|truncate(10,
+                                True, '') }}{% else %}—{% endif %}</span>
+                        </div>
+                    </div>
+                    <div class="card-actions">
+                        {% if iv_status == 'NOT_STARTED' %}
+                        <a href="{{ url_for('interview.start') }}" target="_blank" class="btn-dashboard glow">Start
+                            Interview</a>
+                        {% elif iv_status == 'COMPLETED' or iv_status == 'VERIFIED' %}
+                        <a href="{{ url_for('interview.results', interview_id=interview['id']) }}"
+                            class="btn-dashboard primary">View Interview</a>
+                        <a href="{{ url_for('interview.start') }}" target="_blank"
+                            class="btn-dashboard secondary">Retake</a>
+                        {% else %}
+                        <a href="{{ url_for('interview.start') }}" target="_blank"
+                            class="btn-dashboard primary">Resume</a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+            {# ── Supporting Documents Panel ───────────────────────── #}
+            <div class="intelligence-card" style="margin-top: 1.5rem; width: 100%;">
+                <div class="card-header">
+                    <div class="card-icon">📁</div>
+                    <div class="card-title">
+                        <h3>Supporting Documents</h3>
+                    </div>
+                </div>
+
+                <div style="padding: 1.5rem;">
+                    {% if uploaded_documents %}
+                    <div style="display: flex; flex-direction: column; gap: 10px; margin-bottom: 2rem;">
+                        {% for doc in uploaded_documents %}
+                        <div
+                            style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.05); padding: 10px 15px; border-radius: 8px;">
+                            <div>
+                                <strong>{{ doc.type }}</strong>
+                                <div style="font-size: 0.8rem; color: var(--text-dim);">{{ doc.original_name }}</div>
+                            </div>
+                            <a href="{{ url_for('resume.view_document', filename=doc.filename) }}" target="_blank"
+                                class="btn-dashboard secondary" style="padding: 6px 12px; font-size: 0.85rem;">View</a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+
+                    <form action="{{ url_for('resume.upload_document') }}" method="POST" enctype="multipart/form-data"
+                        style="display: flex; gap: 15px; align-items: flex-end; background: rgba(15, 23, 42, 0.4); padding: 15px; border-radius: 8px;">
+                        <div style="flex: 1;">
+                            <label
+                                style="font-size: 0.85rem; color: var(--text-dim); display: block; margin-bottom: 5px;">Document
+                                Type</label>
+                            <select name="doc_type" required
+                                style="width: 100%; padding: 10px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff; border-radius: 6px; outline: none;">
+                                <option value="10th Marksheet">10th Marksheet</option>
+                                <option value="12th Marksheet">12th Marksheet</option>
+                                <option value="Degree Certificate">Degree Certificate</option>
+                                <option value="Other Certification">Other Certification</option>
+                                <option value="Portfolio/Work Sample">Portfolio / Work Sample</option>
+                            </select>
+                        </div>
+                        <div style="flex: 2;">
+                            <label
+                                style="font-size: 0.85rem; color: var(--text-dim); display: block; margin-bottom: 5px;">Upload
+                                PDF File</label>
+                            <input type="file" name="document" accept="application/pdf,image/png,image/jpeg" required
+                                style="width: 100%; padding: 8px; background: rgba(0,0,0,0.3); border: 1px solid var(--border); border-radius: 6px; color: var(--text-dim);">
+                        </div>
+                        <button type="submit" class="btn-dashboard primary" style="padding: 10px 20px;">Upload</button>
+                    </form>
+                </div>
+            </div>
+
+            {# ── Skills Preview ──────────────────────────────────── #}
+            {% if skills %}
+            <div class="dashboard-footer-section">
+                <h4>Extracted Skills Spotlight</h4>
+                <div class="skills-preview">
+                    {% for skill in skills[:12] %}
+                    <span class="skill-tag">{{ skill }}</span>
+                    {% endfor %}
+                    {% if skills | length > 12 %}
+                    <span class="skill-tag skill-more">+{{ skills | length - 12 }} more</span>
+                    {% endif %}
+                </div>
+            </div>
+            {% endif %}
+
+            {% else %}
+            {# ── EMPTY STATE ──────────────────────────────────────── #}
+            <div class="empty-state">
+                <div class="empty-icon">📄</div>
+                <h2>No resume submitted yet</h2>
+                <p>Upload your resume to begin verification and unlock your candidate profile.</p>
+                <a href="{{ url_for('resume.upload') }}" class="btn btn-primary btn-glow">
+                    <span class="btn-text">+ Upload Resume</span>
+                    <span class="btn-arrow">→</span>
+                </a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}

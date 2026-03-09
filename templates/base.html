@@ -1,0 +1,33 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}{% endblock %} — AI Hiring Platform</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    {% block extra_head %}{% endblock %}
+</head>
+
+<body>
+    <nav class="navbar">
+        <a href="{{ url_for('index') }}" class="navbar-brand">
+            <span class="logo-icon">⚡</span>
+            AI Hiring Platform
+        </a>
+        <div class="navbar-links">
+            {% if session.get('user_id') %}
+            <a href="{{ url_for('auth.logout') }}" class="btn-nav">Logout</a>
+            {% else %}
+            <a href="{{ url_for('auth.login') }}">Login</a>
+            <a href="{{ url_for('auth.register') }}" class="btn-nav">Register</a>
+            {% endif %}
+        </div>
+    </nav>
+
+    <div class="page-container">
+        {% block content %}{% endblock %}
+    </div>
+</body>
+
+</html>
