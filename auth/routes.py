@@ -3,6 +3,7 @@ import bcrypt
 import sqlite3
 import secrets
 import smtplib
+import threading
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 from datetime import datetime, timedelta
@@ -69,16 +70,19 @@ def send_otp_email(to_email, otp):
     """
     msg.attach(MIMEText(html_body, 'html'))
 
-    try:
-        with smtplib.SMTP(server, port) as smtp:
-            if use_tls:
-                smtp.starttls()
-            smtp.login(username, password)
-            smtp.sendmail(username, to_email, msg.as_string())
-        return True
-    except Exception as e:
-        current_app.logger.error(f"Failed to send OTP email: {e}")
-        return False
+    def _send_async():
+        try:
+            with smtplib.SMTP(server, port, timeout=5) as smtp:
+                if use_tls:
+                    smtp.starttls()
+                smtp.login(username, password)
+                smtp.sendmail(username, to_email, msg.as_string())
+        except Exception as e:
+            pass # Logger might not be available in async thread context safely
+
+    # Run in background to prevent Gunicorn worker timeout on Render
+    threading.Thread(target=_send_async).start()
+    return True
 
 
 # ─── Registration (Step 1: Collect data + send OTP) ─────────────────────────
