@@ -72,11 +72,16 @@ def send_otp_email(to_email, otp):
 
     def _send_async():
         try:
-            with smtplib.SMTP(server, port, timeout=5) as smtp:
-                if use_tls:
-                    smtp.starttls()
-                smtp.login(username, password)
-                smtp.sendmail(username, to_email, msg.as_string())
+            if port == 465:
+                with smtplib.SMTP_SSL(server, port, timeout=10) as smtp:
+                    smtp.login(username, password)
+                    smtp.sendmail(username, to_email, msg.as_string())
+            else:
+                with smtplib.SMTP(server, port, timeout=10) as smtp:
+                    if use_tls:
+                        smtp.starttls()
+                    smtp.login(username, password)
+                    smtp.sendmail(username, to_email, msg.as_string())
         except Exception as e:
             pass # Logger might not be available in async thread context safely
 
@@ -336,21 +341,36 @@ def test_email():
     import traceback
     result = "Starting test...<br>"
     try:
-        with smtplib.SMTP(server, port, timeout=10) as smtp:
-            smtp.set_debuglevel(1)
-            result += "SMTP Connection established.<br>"
-            smtp.starttls()
-            result += "TLS started.<br>"
-            smtp.login(username, password)
-            result += "Logged in correctly.<br>"
-            
-            msg = MIMEText('This is a network test email.', 'html')
-            msg['Subject'] = 'Test from Render'
-            msg['From'] = username
-            msg['To'] = to_email
-            
-            smtp.sendmail(username, to_email, msg.as_string())
-            result += f"Email sent successfully to {to_email}!"
+        if port == 465:
+            with smtplib.SMTP_SSL(server, port, timeout=10) as smtp:
+                smtp.set_debuglevel(1)
+                result += f"SMTP_SSL Connection established on port {port}.<br>"
+                smtp.login(username, password)
+                result += "Logged in correctly.<br>"
+                
+                msg = MIMEText('This is a network test email on SSL.', 'html')
+                msg['Subject'] = 'Test from Render (SSL)'
+                msg['From'] = username
+                msg['To'] = to_email
+                
+                smtp.sendmail(username, to_email, msg.as_string())
+                result += f"Email sent successfully to {to_email}!"
+        else:
+            with smtplib.SMTP(server, port, timeout=10) as smtp:
+                smtp.set_debuglevel(1)
+                result += f"SMTP Connection established on port {port}.<br>"
+                smtp.starttls()
+                result += "TLS started.<br>"
+                smtp.login(username, password)
+                result += "Logged in correctly.<br>"
+                
+                msg = MIMEText('This is a network test email via TLS.', 'html')
+                msg['Subject'] = 'Test from Render (TLS)'
+                msg['From'] = username
+                msg['To'] = to_email
+                
+                smtp.sendmail(username, to_email, msg.as_string())
+                result += f"Email sent successfully to {to_email}!"
     except Exception as e:
         result += "<b>ERROR OCCURRED:</b><br><pre>" + traceback.format_exc() + "</pre>"
     
